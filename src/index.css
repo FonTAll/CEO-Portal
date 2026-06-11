@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Cinzel:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "JetBrains Mono", "Noto Sans Thai", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "Noto Sans Thai", monospace;
+  --font-serif: "Cinzel", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  
+  /* Primary Font Strategy: English/Numbers (Mono) -> Thai (Noto) -> UI (Inter) */
+  --font-strategy: 'JetBrains Mono', 'Noto Sans Thai', 'Inter', sans-serif;
+}
+
+body { 
+  font-family: var(--font-strategy);
+  @apply text-slate-800 antialiased;
+}
+
+/* Typography Utility Classes */
+.font-ui {
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
+}
+
+.font-technical {
+  font-family: 'JetBrains Mono', 'Noto Sans Thai', sans-serif !important;
+}
+
+/* Exceptions as per user request */
+.font-exception-header {
+  /* Used for Page Headers and Titles */
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
+}
+
+.font-exception-system {
+  /* Used for System Name / Logo */
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
+}
+
+.font-exception-hero {
+  /* Used for Hero Banners */
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
+}
+
+.font-exception-greeting {
+  /* Used for Greetings, forced to 500 weight */
+  font-family: 'Inter', 'Noto Sans Thai', sans-serif !important;
+  font-weight: 500 !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #5372ba22; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #5372ba44; }
+
+.sidebar-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+.sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.15); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

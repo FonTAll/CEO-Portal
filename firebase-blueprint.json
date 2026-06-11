@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "Calendar": {
+      "title": "Calendar",
+      "description": "Represents events, holidays, schedules, and leave requests.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the calendar event"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short summary or name of the event"
+        },
+        "type": {
+          "type": "string",
+          "description": "The category of the calendar item like Holiday, Leave, Work session"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Form start ISO date on leave requests"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "Form end ISO date on leave requests"
+        },
+        "date": {
+          "type": "string",
+          "description": "Specific single-day date for a custom calendar event or holiday"
+        },
+        "time": {
+          "type": "string",
+          "description": "Time of day of the event"
+        },
+        "category": {
+          "type": "string",
+          "description": "Sub-category grouping identifier"
+        },
+        "status": {
+          "type": "string",
+          "description": "Review status of the event or request"
+        },
+        "priority": {
+          "type": "string",
+          "description": "Importance weight like Normal, High or Low"
+        },
+        "assignee": {
+          "type": "string",
+          "description": "Who represents the administrative contact of the event"
+        },
+        "description": {
+          "type": "string",
+          "description": "Long detailed description notes"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Employee name who created this event record"
+        },
+        "color": {
+          "type": "string",
+          "description": "Tailwind color class styling overrides"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Audit creation timestamp reference"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Audit updated timestamp reference"
+        }
+      },
+      "required": ["id"]
+    },
+    "AccessLogs": {
+      "title": "AccessLogs",
+      "description": "Chronological audit log tracking application-wide security-sensitive logins and actions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique logging item identifier reference"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO timestamp of log creation"
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Identifier key of reporting employee"
+        },
+        "name": {
+          "type": "string",
+          "description": "The human readable employee name"
+        },
+        "action": {
+          "type": "string",
+          "description": "Keyword describing type of event logged"
+        },
+        "details": {
+          "type": "string",
+          "description": "Comprehensive descriptive payload details"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "Optional reporting browser user agent string metadata"
+        }
+      },
+      "required": ["id"]
+    },
+    "SaleRevenue": {
+      "title": "SaleRevenue",
+      "description": "CEO Portal Sales and revenue records imported via spreadsheet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "SaleComparison": {
+      "title": "SaleComparison",
+      "description": "CEO Portal monthly comparative sales projections and targets.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "CostExpense": {
+      "title": "CostExpense",
+      "description": "CEO Portal Operating expenses and operational cost metrics.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/Calendar/{eventId}": {
+      "schema": "Calendar",
+      "description": "Global collection mapping individual calendar items, schedules, leaves, and notifications."
+    },
+    "/AccessLogs/{logId}": {
+      "schema": "AccessLogs",
+      "description": "Secure collection storing system logs of application actions and status logs."
+    },
+    "/SaleRevenue/{recordId}": {
+      "schema": "SaleRevenue",
+      "description": "Spreadsheet sales and revenue logs synced from Google Sheets."
+    },
+    "/SaleComparison/{recordId}": {
+      "schema": "SaleComparison",
+      "description": "Comparative sales benchmarks by product and category."
+    },
+    "/CostExpense/{recordId}": {
+      "schema": "CostExpense",
+      "description": "Monthly operating expenses and utilities tracked synchronously."
+    }
+  }
+}

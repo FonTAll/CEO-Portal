@@ -1,0 +1,8 @@
+{
+  "name": "CEO Portal",
+  "description": "ระบบบริหารจัดการภาพรวมและข้อมูลผู้บริหาร",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

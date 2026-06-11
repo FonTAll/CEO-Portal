@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (Default Deny Catch-all)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Global Helper Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    // Validation Helper for Calendar collection
+    function isValidCalendar(data) {
+      return data.keys().hasAll(['id'])
+        && data.id is string && data.id.size() <= 128
+        && (!data.keys().hasAny(['title']) || (data.title is string && data.title.size() <= 200))
+        && (!data.keys().hasAny(['type']) || (data.type is string && data.type.size() <= 100))
+        && (!data.keys().hasAny(['startDate']) || (data.startDate is string && data.startDate.size() <= 60))
+        && (!data.keys().hasAny(['endDate']) || (data.endDate is string && data.endDate.size() <= 60))
+        && (!data.keys().hasAny(['date']) || (data.date is string && data.date.size() <= 60))
+        && (!data.keys().hasAny(['time']) || (data.time is string && data.time.size() <= 60))
+        && (!data.keys().hasAny(['category']) || (data.category is string && data.category.size() <= 100))
+        && (!data.keys().hasAny(['status']) || (data.status is string && data.status.size() <= 50))
+        && (!data.keys().hasAny(['priority']) || (data.priority is string && data.priority.size() <= 50))
+        && (!data.keys().hasAny(['assignee']) || (data.assignee is string && data.assignee.size() <= 100))
+        && (!data.keys().hasAny(['description']) || (data.description is string && data.description.size() <= 2000))
+        && (!data.keys().hasAny(['createdBy']) || (data.createdBy is string && data.createdBy.size() <= 100))
+        && (!data.keys().hasAny(['color']) || (data.color is string && data.color.size() <= 200))
+        && (!data.keys().hasAny(['createdAt']) || (data.createdAt is string && data.createdAt.size() <= 40))
+        && (!data.keys().hasAny(['updatedAt']) || (data.updatedAt is string && data.updatedAt.size() <= 40));
+    }
+    
+    // Validation Helper for AccessLogs collection
+    function isValidAccessLog(data) {
+      return data.keys().hasAll(['id'])
+        && data.id is string && data.id.size() <= 128
+        && (!data.keys().hasAny(['timestamp']) || (data.timestamp is string && data.timestamp.size() <= 40))
+        && (!data.keys().hasAny(['employeeId']) || (data.employeeId is string && data.employeeId.size() <= 50))
+        && (!data.keys().hasAny(['name']) || (data.name is string && data.name.size() <= 150))
+        && (!data.keys().hasAny(['action']) || (data.action is string && data.action.size() <= 100))
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() <= 100))
+        && (!data.keys().hasAny(['details']) || (data.details is string && data.details.size() <= 1000))
+        && (!data.keys().hasAny(['userAgent']) || (data.userAgent is string && data.userAgent.size() <= 500));
+    }
+
+    // Rules for Calendar collection
+    match /Calendar/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(eventId) && isValidCalendar(request.resource.data);
+      allow update: if isSignedIn() && isValidId(eventId) && isValidCalendar(request.resource.data);
+      allow delete: if isSignedIn() && isValidId(eventId);
+    }
+    
+    // Rules for AccessLogs collection
+    match /AccessLogs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(logId) && isValidAccessLog(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Rules for SaleRevenue collection
+    match /SaleRevenue/{recordId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(recordId);
+      allow update: if isSignedIn() && isValidId(recordId);
+      allow delete: if isSignedIn() && isValidId(recordId);
+    }
+
+    // Rules for SaleComparison collection
+    match /SaleComparison/{recordId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(recordId);
+      allow update: if isSignedIn() && isValidId(recordId);
+      allow delete: if isSignedIn() && isValidId(recordId);
+    }
+
+    // Rules for CostExpense collection
+    match /CostExpense/{recordId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(recordId);
+      allow update: if isSignedIn() && isValidId(recordId);
+      allow delete: if isSignedIn() && isValidId(recordId);
+    }
+  }
+}
