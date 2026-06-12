@@ -206,6 +206,17 @@ function writeData(sheet, data, headersObj) {
   if (data.length === 0) return createResponse("success", "ไม่มีข้อมูลให้เขียน", null, headersObj);
 
   let sheetHeaders = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+  const sheetName = sheet.getName();
+
+  // If sheet is empty or has no columns/headers, write the default headers first
+  if (sheet.getLastColumn() === 0 || (sheetHeaders.length === 1 && sheetHeaders[0] === "")) {
+    let columns = GLOBAL_SHEETS_CONFIG[sheetName] || Object.keys(data[0] || {});
+    if (columns.length > 0) {
+      sheet.getRange(1, 1, 1, columns.length).setValues([columns])
+           .setFontWeight("bold").setBackground("#eaeaec");
+      sheetHeaders = columns;
+    }
+  }
   
   const rows = data.map(item => {
     return sheetHeaders.map(h => {

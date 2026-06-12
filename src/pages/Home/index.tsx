@@ -79,8 +79,11 @@ import {
   Legend as RechartsLegend,
   AreaChart,
   Area,
-  Cell
+  Cell,
+  PieChart,
+  Pie
 } from 'recharts';
+import { RefreshCcw, LayoutGrid } from 'lucide-react';
 
 // --- Theme Configuration (Vibrant Palette) ---
 const THEME = {
@@ -165,12 +168,12 @@ const MOCK_STATS = [
         trendData: [{ value: 30 }, { value: 29.5 }, { value: 29 }, { value: 28.8 }, { value: 28.5 }, { value: 28.4 }]
     },
     { 
-        label: 'Headcount', 
-        value: '177', 
-        sub: '+2 this month', 
-        icon: Users, 
+        label: 'Net Profit', 
+        value: '฿16.8M', 
+        sub: '+4.2% this quarter', 
+        icon: Banknote, 
         color: THEME.c21,
-        trendData: [{ value: 170 }, { value: 172 }, { value: 175 }, { value: 175 }, { value: 176 }, { value: 177 }]
+        trendData: [{ value: 14.2 }, { value: 14.8 }, { value: 15.3 }, { value: 15.9 }, { value: 16.2 }, { value: 16.8 }]
     },
 ];
 
@@ -758,7 +761,134 @@ const CorporateAlert = () => {
     );
 };
 
+const CEODashboard = () => {
+  const barData = [
+    { name: 'COGS', value: 45, fill: '#9e2d26' },
+    { name: 'SG&A', value: 25, fill: '#c1451f' },
+    { name: 'R&D', value: 15, fill: '#d2963f' },
+    { name: 'TAX', value: 8, fill: '#738a96' },
+  ];
 
+  const areaData = [
+    { name: '06/04', value: 1200 },
+    { name: '06/05', value: 1800 },
+    { name: '06/06', value: 1400 },
+    { name: '06/07', value: 2200 },
+    { name: '06/08', value: 2800 },
+    { name: '06/09', value: 2100 },
+    { name: '06/10', value: 3200 },
+  ];
+
+  const gaugeData = [
+    { name: 'Score', value: 99.4 },
+    { name: 'Remaining', value: 0.6 }
+  ];
+
+  return (
+    <div className="bg-[#f9fcfb] border border-[#e8eaec] rounded-2xl p-5 md:p-8 shadow-sm w-full mt-2 mb-2 font-mono">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between md:items-end pb-5 mb-5 gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <LayoutGrid size={24} className="text-[#d2963f]" />
+            <h1 className="text-xl md:text-2xl font-bold font-sans text-[#2f3946] tracking-widest uppercase">CEO PORTAL <span className="text-[#899ca8]">DASHBOARD</span></h1>
+          </div>
+          <p className="text-[9px] md:text-[10px] text-[#718698] tracking-[0.2em] font-black uppercase">REAL-TIME D3 VISUALIZATIONS COMPARING BUSINESS KPIS & OPERATIONS</p>
+        </div>
+        <div className="flex items-end gap-6 shrink-0">
+          <div className="flex flex-col items-end gap-1 mb-1">
+            <span className="text-[9px] text-[#718698] uppercase font-black tracking-widest">Last Integrity Scan</span>
+            <span className="text-[13px] font-bold text-[#2f3946] tracking-widest">10:11:33</span>
+          </div>
+          <button className="flex items-center gap-2 bg-[#f2f4f7] hover:bg-[#e4e9f0] transition-colors border border-[#dce0e6] text-[#2f3946] px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] shadow-sm">
+            <RefreshCcw size={14} /> Scan Systems
+          </button>
+        </div>
+      </div>
+
+      {/* Grid of 3 panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Panel 1: Gauge */}
+        <div className="bg-[#f5f7f9] rounded-xl p-5 border border-[#eceef2] flex flex-col items-center justify-center relative min-h-[220px]">
+          <div className="absolute top-2 w-full h-[240px]">
+             <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                 <Pie
+                   data={gaugeData}
+                   cx="50%"
+                   cy="55%"
+                   startAngle={180}
+                   endAngle={0}
+                   innerRadius={80}
+                   outerRadius={110}
+                   dataKey="value"
+                   stroke="none"
+                 >
+                   <Cell fill="url(#colorGauge)" />
+                   <Cell fill="#a2b3aa" /> 
+                 </Pie>
+                 <defs>
+                   <linearGradient id="colorGauge" x1="0" y1="0" x2="1" y2="0">
+                     <stop offset="0%" stopColor="#d59a43" />
+                     <stop offset="100%" stopColor="#879f8b" />
+                   </linearGradient>
+                 </defs>
+               </PieChart>
+             </ResponsiveContainer>
+          </div>
+          <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full mt-2">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[#192739] font-sans tracking-tight">99.4%</h2>
+            <p className="text-[10px] text-[#718698] font-bold uppercase mt-2 tracking-widest font-sans">BUSINESS HEALTH SCORE</p>
+          </div>
+        </div>
+
+        {/* Panel 2: Bar Chart */}
+        <div className="bg-[#f5f7f9] rounded-xl p-5 border border-[#eceef2] flex flex-col items-center justify-center relative min-h-[220px]">
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#2f3946] mb-2 text-center absolute top-5 w-full leading-tight">EXPENSES BY<br/>CATEGORY (MB)</h3>
+          <div className="mt-10 w-full h-[150px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={barData} margin={{ top: 25, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="none" vertical={false} stroke="#dce0e6" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={{ stroke: '#dce0e6' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={false} tickLine={false} tickCount={4} />
+                <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontFamily: 'monospace' }} />
+                <Bar dataKey="value" radius={[2, 2, 0, 0]} maxBarSize={32}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Panel 3: Area Chart */}
+        <div className="bg-[#f5f7f9] rounded-xl p-5 border border-[#eceef2] flex flex-col items-center justify-center relative min-h-[220px]">
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#2f3946] mb-2 text-center absolute top-5 w-full leading-tight">REVENUE VOLUME<br/>TREND (M)</h3>
+          <div className="mt-10 w-full h-[150px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={areaData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1e3f5a" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#1e3f5a" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="none" vertical={false} stroke="#dce0e6" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={{ stroke: '#dce0e6' }} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} tickFormatter={(val) => `${val/1000}k`} axisLine={false} tickLine={false} tickCount={4} />
+                <RechartsTooltip contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Area type="monotone" dataKey="value" stroke="#1e3f5a" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" dot={{ stroke: '#1e3f5a', strokeWidth: 2, r: 4, fill: '#f5f7f9' }} activeDot={{ r: 6, fill: '#1e3f5a', stroke: '#fff', strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
 
 export default function Home() {
   const { user } = useAuth();
@@ -914,6 +1044,9 @@ export default function Home() {
               </button>
           </div>
       </div>
+
+      {/* CEO PORTAL BOARD */}
+      <CEODashboard />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {MOCK_STATS.map((stat, idx) => (

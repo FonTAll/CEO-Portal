@@ -1,7 +1,15 @@
 /// <reference types="vite/client" />
 import { ApiResponse } from '../types';
 
-const SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL || '';
+export const getScriptUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const customUrl = localStorage.getItem('cfg_apps_script_url');
+    if (customUrl && customUrl.trim()) {
+      return customUrl.trim();
+    }
+  }
+  return import.meta.env.VITE_APPS_SCRIPT_URL || '/api/proxy-gas';
+};
 
 export enum OperationType {
   CREATE = 'create',
@@ -66,7 +74,7 @@ export async function handleFirestoreError(error: unknown, operationType: Operat
 }
 
 // Output setup status for easy debugging
-console.log('App initialization - GAS Backend URL configured:', !!SCRIPT_URL);
+console.log('App initialization - GAS Backend URL configured:', !!getScriptUrl());
 
 // Cache utility for static data
 export const cache = {
@@ -147,21 +155,26 @@ export const api = {
     }
     // ------------------------------------
 
-    if (!SCRIPT_URL) {
+    const currentScriptUrl = getScriptUrl();
+    if (!currentScriptUrl) {
       console.warn('VITE_APPS_SCRIPT_URL (Google Apps Script Web App URL) is not set. ⚠️ Returning mock response.');
       return mockResponse(action, data);
     }
     
     try {
       // 📝 OPTIMISTIC UI SUPPORT: We use text/plain to avoid preflight (Performance Boost)
-      const response = await fetch(SCRIPT_URL, {
+      const response = await fetch(currentScriptUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify({ action, sheet, data, ...params }),
       });
-      return await response.json();
+      const result = await response.json();
+      if (result && result.status === 'error') {
+        throw new Error(result.message || 'API responded with an error');
+      }
+      return result;
     } catch (error) {
       console.error('API Error:', error);
       throw error;

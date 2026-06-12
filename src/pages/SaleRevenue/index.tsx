@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CsvUpload } from '../../components/shared/CsvUpload';
 import { api } from '../../services/api';
 import { DraggableModal } from '../../components/shared/DraggableModal';
-import { TrendingUp, Upload, Settings, Plus, List, Search, ChevronLeft, ChevronRight, BarChart2, DollarSign, Package, HelpCircle, X, LayoutGrid, Zap, Database, Briefcase } from 'lucide-react';
+import { TrendingUp, Upload, Settings, Plus, List, Search, ChevronLeft, ChevronRight, BarChart2, DollarSign, Package, HelpCircle, X, LayoutGrid, Zap, Database, Briefcase, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -488,6 +488,7 @@ export default function SaleRevenue() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'ALL' | 'ITEM' | 'CATEGORY' | 'COMPARISON'>('ALL');
   const [isLoading, setIsLoading] = useState(false);
+  const [alertInfo, setAlertInfo] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [comparisonProducts, setComparisonProducts] = useState<ComparisonProduct[]>(() => {
     const saved = localStorage.getItem('saleRevenueComparisonProducts');
@@ -611,18 +612,30 @@ export default function SaleRevenue() {
       updatedAt: timestamp
     }));
 
+    const previousData = data;
     // Optimistic UI update
     setData(cleanRows);
     setIsModalOpen(false);
+    setAlertInfo(null);
 
     // Synchronous Dual Write to both Google Sheet & Firebase
     try {
       setIsLoading(true);
       await api.post('write', 'SaleRevenue', cleanRows);
       localStorage.setItem('saleRevenueCache', JSON.stringify(cleanRows));
+      setAlertInfo({
+        type: 'success',
+        message: t('Successfully uploaded and synchronized data with Google Sheet & Firestore.', 'อัปโหลดและบันทึกข้อมูลลง Google Sheet เรียบร้อยแล้ว!')
+      });
       console.log('Successfully completed batch export to Sheets & Firestore.');
     } catch (err) {
       console.error('Failed to dual write uploaded sale revenue list:', err);
+      // Rollback UI update on failure
+      setData(previousData);
+      setAlertInfo({
+        type: 'error',
+        message: t('Failed to save data. Rollback applied. Error: ', 'เกิดข้อผิดพลาดในการบันทึกข้อมูลลงฐานข้อมูล (ทำการย้อนกลับแล้ว): ') + (err instanceof Error ? err.message : String(err))
+      });
     } finally {
       setIsLoading(false);
     }
@@ -783,6 +796,37 @@ export default function SaleRevenue() {
       </div>
 
       <div className="w-full px-4 sm:px-8 mt-4 mb-4">
+        
+        {/* Notification Alert Banner */}
+        <AnimatePresence>
+          {alertInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`mb-4 p-4 rounded-xl flex items-center justify-between gap-3 shadow-sm border ${
+                alertInfo.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-100/80 text-emerald-800'
+                  : 'bg-rose-50 border-rose-100/80 text-rose-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {alertInfo.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                )}
+                <span className="text-[12px] font-bold uppercase tracking-wider">{alertInfo.message}</span>
+              </div>
+              <button
+                onClick={() => setAlertInfo(null)}
+                className="p-1.5 rounded-full hover:bg-black/5 transition-colors text-current opacity-70 hover:opacity-100"
+              >
+                <X size={16} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* KPI STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-3 shrink-0">

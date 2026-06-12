@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CsvUpload } from '../../components/shared/CsvUpload';
 import { api } from '../../services/api';
 import { DraggableModal } from '../../components/shared/DraggableModal';
-import { BarChart3, Upload, Plus, List, Search, ChevronLeft, ChevronRight, Calculator, Activity, DollarSign, HelpCircle, X, LayoutGrid, Briefcase, Zap, Database } from 'lucide-react';
+import { BarChart3, Upload, Plus, List, Search, ChevronLeft, ChevronRight, Calculator, Activity, DollarSign, HelpCircle, X, LayoutGrid, Briefcase, Zap, Database, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -93,6 +93,7 @@ export default function CostExpense() {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [alertInfo, setAlertInfo] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   const [mapping, setMapping] = useState(() => {
     const saved = localStorage.getItem('costExpenseMapping');
@@ -146,18 +147,30 @@ export default function CostExpense() {
       updatedAt: timestamp
     }));
 
+    const previousData = data;
     // Local state display (Snappy UI feedback)
     setData(cleanRows);
     setIsModalOpen(false);
+    setAlertInfo(null);
 
     // Save batch to cloud datastores (Firebase + Sheets)
     try {
       setIsLoading(true);
       await api.post('write', 'CostExpense', cleanRows);
       localStorage.setItem('costExpenseCache', JSON.stringify(cleanRows));
+      setAlertInfo({
+        type: 'success',
+        message: t('Successfully uploaded and synchronized cost & expense data with Google Sheet & Firestore.', 'อัปโหลดและบันทึกข้อมูลต้นทุนค่าใช้จ่ายลง Google Sheet เรียบร้อยแล้ว!')
+      });
       console.log('Successfully written CostExpense data batch (Dual Write).');
     } catch (err) {
       console.error('Error while saving uploaded cost data batch:', err);
+      // Rollback UI update on failure
+      setData(previousData);
+      setAlertInfo({
+        type: 'error',
+        message: t('Failed to save cost & expense data. Rollback applied. Error: ', 'เกิดข้อผิดพลาดในการบันทึกข้อมูลต้นทุนค่าใช้จ่าย (ทำการย้อนกลับแล้ว): ') + (err instanceof Error ? err.message : String(err))
+      });
     } finally {
       setIsLoading(false);
     }
@@ -268,6 +281,37 @@ export default function CostExpense() {
       </div>
 
       <div className="w-full px-4 sm:px-8 mt-4 mb-4">
+        
+        {/* Notification Alert Banner */}
+        <AnimatePresence>
+          {alertInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className={`mb-4 p-4 rounded-xl flex items-center justify-between gap-3 shadow-sm border ${
+                alertInfo.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-100/80 text-emerald-800'
+                  : 'bg-rose-50 border-rose-100/80 text-rose-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {alertInfo.type === 'success' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                )}
+                <span className="text-[12px] font-bold uppercase tracking-wider">{alertInfo.message}</span>
+              </div>
+              <button
+                onClick={() => setAlertInfo(null)}
+                className="p-1.5 rounded-full hover:bg-black/5 transition-colors text-current opacity-70 hover:opacity-100"
+              >
+                <X size={16} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* KPI STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-3 shrink-0">

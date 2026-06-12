@@ -8,7 +8,47 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Secure Google Apps Script backend proxy endpoint
+app.post('/api/proxy-gas', async (req, res) => {
+  const gasUrl = process.env.VITE_APPS_SCRIPT_URL;
+  if (!gasUrl) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'VITE_APPS_SCRIPT_URL is not configured in the application Secrets. Please go to Settings > Secrets and add VITE_APPS_SCRIPT_URL.'
+    });
+  }
+
+  try {
+    const response = await fetch(gasUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      return res.json(data);
+    } catch (parseError) {
+      console.error('Failed to parse Apps Script response:', text);
+      return res.status(502).json({
+        status: 'error',
+        message: 'Invalid response format received from Google Apps Script. Please verify your web app deployment.'
+      });
+    }
+  } catch (error: any) {
+    console.error('GAS Proxy Error:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to connect to Google Apps Script. Error: ' + (error.message || String(error))
+    });
+  }
+});
 
 // API route for Copilot with Search Grounding
 app.post('/api/gemini/copilot', async (req, res) => {
