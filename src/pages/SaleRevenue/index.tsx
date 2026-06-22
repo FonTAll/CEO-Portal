@@ -597,8 +597,14 @@ export default function SaleRevenue() {
     };
   });
 
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+
   const handleClearData = async () => {
-    if (!window.confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลทั้งหมด?')) return;
+    if (!isConfirmingClear) {
+      setIsConfirmingClear(true);
+      setTimeout(() => setIsConfirmingClear(false), 3000);
+      return;
+    }
     
     try {
       setIsLoading(true);
@@ -977,8 +983,8 @@ export default function SaleRevenue() {
                   <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#212c46] hover:bg-[#414757] text-white px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md transition-all">
                     <Plus size={14} strokeWidth={3} /> {t('Add Data', 'เพิ่มข้อมูล')}
                   </button>
-                  <button onClick={handleClearData} className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border border-rose-200">
-                    <Trash2 size={14} strokeWidth={3} /> {t('Clear', 'ลบข้อมูล')}
+                  <button onClick={handleClearData} className={`flex items-center gap-2 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border ${isConfirmingClear ? 'bg-rose-500 text-white border-rose-600 animate-pulse' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'}`}>
+                    <Trash2 size={14} strokeWidth={3} /> {isConfirmingClear ? t('CONFIRM?', 'ยืนยัน?') : t('Clear', 'ลบข้อมูล')}
                   </button>
                 </>
               )}

@@ -65,32 +65,39 @@ export default function SaleAnalysis() {
   };
 
   // Helper to parse dates like "25-Jan-2026" or "2026-01-25" or similar
-  const getParsedMonthYear = (rawDate: string) => {
+  const getParsedMonthYear = (rawDate: any) => {
     if (!rawDate) return { month: 'Unknown', year: 'Unknown', monthKey: 'Unknown' };
-    const dateStr = String(rawDate);
-    
-    // Check format like DD-MMM-YYYY (e.g. 25-Jan-2026)
-    const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
-    if (matches) {
-      return {
-        month: matches[2],
-        year: matches[3],
-        monthKey: `${matches[2]}-${matches[3]}`
-      };
+    let d: Date | null = null;
+    if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+      const serialDate = Number(rawDate);
+      if (serialDate > 20000) {
+        d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+      }
+    }
+
+    if (!d) {
+      const dateStr = String(rawDate);
+      // Check format like DD-MMM-YYYY (e.g. 25-Jan-2026)
+      const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
+      if (matches) {
+        return {
+          month: matches[2],
+          year: matches[3],
+          monthKey: `${matches[2]}-${matches[3]}`
+        };
+      }
+      d = new Date(rawDate);
     }
     
     // Try browser parsing
-    try {
-      const d = new Date(rawDate);
-      if (!isNaN(d.getTime())) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return {
-          month: months[d.getMonth()],
-          year: String(d.getFullYear()),
-          monthKey: `${months[d.getMonth()]}-${d.getFullYear()}`
-        };
-      }
-    } catch (e) {}
+    if (d && !isNaN(d.getTime())) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return {
+        month: months[d.getMonth()],
+        year: String(d.getFullYear()),
+        monthKey: `${months[d.getMonth()]}-${d.getFullYear()}`
+      };
+    }
 
     return { month: 'Unknown', year: '2026', monthKey: 'Unknown-2026' };
   };

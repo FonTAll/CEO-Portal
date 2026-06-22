@@ -68,30 +68,39 @@ export default function ExpenseAnalysis() {
 
   // Mapping columns
   const mapping = {
-    dateCol: 'วันที่', 
-    headcountCol: 'จน.พนักงาน',
-    laborCol: 'ค่าจ้างแรงงาน (บาท)',
-    waterCol: 'ค่าน้ำ (บาท)',
-    electricCol: 'ค่าไฟฟ้า (บาท)',
-    gasCol: 'ค่าแก๊ส (บาท)',  // support alternative naming like ค่าน้ำมัน (บาท)
-    totalCol: 'รวมค่าใช้จ่ายส่วนกลาง (บาท)'
+    dateCol: 'mm/dd/yyyy', 
+    headcountCol: 'จำนวนพนักงาน (คน)',
+    laborCol: 'ค่าจ้างแรงงานรวม',
+    waterCol: 'ค่าน้ำประปา',
+    electricCol: 'ค่าไฟฟ้า',
+    gasCol: 'ค่าแก๊ส/น้ำมัน',
+    totalCol: 'ต้นทุนและค่าใช้จ่ายรวม'
   };
 
   // Helper inside loop to parse year/month safely
-  const getParsedMonthYear = (rawDate: string) => {
+  const getParsedMonthYear = (rawDate: any) => {
     if (!rawDate) return { month: 'Unknown', year: 'Unknown' };
-    const dateStr = String(rawDate);
-    const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
-    if (matches) {
-      return { month: matches[2], year: matches[3] };
-    }
-    try {
-      const d = new Date(rawDate);
-      if (!isNaN(d.getTime())) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return { month: months[d.getMonth()], year: String(d.getFullYear()) };
+    let d: Date | null = null;
+    if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+      const serialDate = Number(rawDate);
+      if (serialDate > 20000) { // arbitrary bound to make sure it's an excel date not headcount
+        d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
       }
-    } catch (e) {}
+    }
+    
+    if (!d) {
+      const dateStr = String(rawDate);
+      const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
+      if (matches) {
+        return { month: matches[2], year: matches[3] };
+      }
+      d = new Date(rawDate);
+    }
+
+    if (d && !isNaN(d.getTime())) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return { month: months[d.getMonth()], year: String(d.getFullYear()) };
+    }
     return { month: 'Unknown', year: '2026' };
   };
 

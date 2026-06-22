@@ -100,8 +100,12 @@ export default function CostExpense() {
     if (saved) return JSON.parse(saved);
     return {
       dateCol: 'mm/dd/yyyy',
-      laborCol: 'ค่าแรง (บาท)',
-      totalCol: 'TOTAL'
+      headcountCol: 'จำนวนพนักงาน (คน)',
+      laborCol: 'ค่าจ้างแรงงานรวม',
+      waterCol: 'ค่าน้ำประปา',
+      electricCol: 'ค่าไฟฟ้า',
+      gasCol: 'ค่าแก๊ส/น้ำมัน',
+      totalCol: 'ต้นทุนและค่าใช้จ่ายรวม'
     };
   });
 
@@ -131,8 +135,14 @@ export default function CostExpense() {
     loadExpenseData();
   }, []);
 
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+
   const handleClearData = async () => {
-    if (!window.confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลทั้งหมด?')) return;
+    if (!isConfirmingClear) {
+      setIsConfirmingClear(true);
+      setTimeout(() => setIsConfirmingClear(false), 3000);
+      return;
+    }
     
     try {
       setIsLoading(true);
@@ -159,24 +169,31 @@ export default function CostExpense() {
     const updatedDataList = [...data];
 
     uploadedData.forEach((row, index) => {
-      const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || Object.values(row)[0] || '';
+      // Find the date column, avoid using the first column blindly if it might be headcount
+      const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || row['Month'] || row['month'] || row['Date/Time'] || '';
       const trimDateVal = String(dateVal).trim();
 
       // Find if a row with the same date already exists in the existing database rows
       const existingRowIndex = updatedDataList.findIndex(existingRow => {
-        const existingDateVal = String(existingRow[mapping.dateCol] || existingRow['Date'] || existingRow['วันที่'] || Object.values(existingRow)[0] || '').trim();
+        const existingDateVal = String(existingRow[mapping.dateCol] || existingRow['Date'] || existingRow['วันที่'] || '').trim();
         return existingDateVal !== '' && existingDateVal === trimDateVal;
       });
 
-      const mappedRow = { ...row };
-      if (dateVal) {
-        mappedRow[mapping.dateCol] = dateVal;
-      }
+      // Construct a standardized mapped row so that it maps correctly to the Google Sheet columns
+      const mappedRow: any = {};
+      mappedRow[mapping.dateCol] = dateVal;
+      mappedRow[mapping.headcountCol] = row['จน.พนักงาน'] || row['จำนวนพนักงาน'] || row['จำนวนพนักงาน (คน)'] || row['headcount'] || Object.values(row)[0] || '';
+      mappedRow[mapping.laborCol] = row['ค่าแรง (บาท)'] || row['ค่าจ้างแรงงานรวม'] || row['Labor Cost'] || Object.values(row)[1] || '';
+      mappedRow[mapping.waterCol] = row['ค่าน้ำประปา'] || row['ค่าน้ำ (บาท)'] || row['ค่าน้ำประปา (บาท)'] || row['Water Bill'] || Object.values(row)[2] || '';
+      mappedRow[mapping.electricCol] = row['ค่าไฟฟ้า'] || row['ค่าไฟฟ้า (บาท)'] || row['Electric Bill'] || Object.values(row)[3] || '';
+      mappedRow[mapping.gasCol] = row['ค่าแก๊ส/น้ำมัน'] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || row['Gas/Fuel Cost'] || Object.values(row)[4] || '';
+      mappedRow[mapping.totalCol] = row['TOTAL'] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['รวม'] || Object.values(row)[5] || '';
 
       if (existingRowIndex !== -1) {
         // Date matches existing row, so overwrite it
         const existingRow = updatedDataList[existingRowIndex];
         const updatedRow = {
+          ...existingRow,
           ...mappedRow,
           id: existingRow.id,
           createdAt: existingRow.createdAt || timestamp,
@@ -252,7 +269,7 @@ export default function CostExpense() {
 
     // Find date column based on known formats or fallback to first column
   const getDateFromRow = React.useCallback((row: any) => {
-    return row[mapping.dateCol] || row['Date'] || row['วันที่'] || Object.values(row)[0] || '-';
+    return row[mapping.dateCol] || row['Date'] || row['วันที่'] || row['Month'] || row['month'] || row['Date/Time'] || '-';
   }, [mapping]);
 
   const filteredData = React.useMemo(() => {
@@ -411,8 +428,8 @@ export default function CostExpense() {
               <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#212c46] hover:bg-[#414757] text-white px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md transition-all">
                 <Plus size={14} strokeWidth={3} /> {t('Add Data', 'เพิ่มข้อมูล')}
               </button>
-              <button onClick={handleClearData} className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border border-rose-200">
-                <Trash2 size={14} strokeWidth={3} /> {t('Clear', 'ลบข้อมูล')}
+              <button onClick={handleClearData} className={`flex items-center gap-2 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border ${isConfirmingClear ? 'bg-rose-500 text-white border-rose-600 animate-pulse' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'}`}>
+                <Trash2 size={14} strokeWidth={3} /> {isConfirmingClear ? t('CONFIRM?', 'ยืนยัน?') : t('Clear', 'ลบข้อมูล')}
               </button>
             </div>
           </div>
@@ -450,12 +467,12 @@ export default function CostExpense() {
                       >
                         <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap">{getDateFromRow(row)}</td>
                         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                           <span className="bg-[#f8f9fa] border border-[#eaeaec] px-3 py-1 rounded-md text-[12px] font-black text-[#4d87a8]">{row['จน.พนักงาน'] || '-'}</span>
+                           <span className="bg-[#f8f9fa] border border-[#eaeaec] px-3 py-1 rounded-md text-[12px] font-black text-[#4d87a8]">{row[mapping.headcountCol] || row['จน.พนักงาน'] || '-'}</span>
                         </td>
                         <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.laborCol] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row['ค่าน้ำ (บาท)'] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row['ค่าไฟฟ้า (บาท)'] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || '-'}</td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.waterCol] || row['ค่าน้ำ (บาท)'] || '-'}</td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.electricCol] || row['ค่าไฟฟ้า (บาท)'] || '-'}</td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.gasCol] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || '-'}</td>
                         <td className="px-4 py-2.5 text-[12px] font-black text-[#d96245] text-right whitespace-nowrap font-mono">{row[mapping.totalCol] || '-'}</td>
                       </motion.tr>
                     ))}
