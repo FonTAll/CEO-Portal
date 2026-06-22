@@ -98,13 +98,14 @@ export default function ExpenseAnalysis() {
   // Pre-process and filter CostExpense data for the selected year
   const processedExpenses = useMemo(() => {
     return data.map(row => {
-      const { month, year } = getParsedMonthYear(row[mapping.dateCol] || row['Date'] || row['date']);
-      const headcount = cleanVal(row[mapping.headcountCol]);
-      const labor = cleanVal(row[mapping.laborCol] || row['Labor Cost'] || row['ค่าจ้างแรงงาน']);
-      const water = cleanVal(row[mapping.waterCol] || row['Water Bill'] || row['ค่าน้ำ']);
-      const electric = cleanVal(row[mapping.electricCol] || row['Electric Bill'] || row['ค่าไฟฟ้า']);
-      const gas = cleanVal(row[mapping.gasCol] || row['ค่าน้ำมัน (บาท)'] || row['Gas/Fuel Cost'] || row['ค่าแก๊ส']);
-      const total = cleanVal(row[mapping.totalCol] || row['Total Cost'] || row['รวมค่าใช้จ่ายส่วนกลาง']);
+      const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
+      const { month, year } = getParsedMonthYear(dateVal);
+      const headcount = cleanVal(row[mapping.headcountCol] || row['จน.พนักงาน'] || row['จำนวนพนักงาน'] || row['จน.พนักงาน(คน)'] || Object.values(row)[1]);
+      const labor = cleanVal(row[mapping.laborCol] || row['ค่าแรง (บาท)'] || row['ค่าจ้างแรงงาน(บาท)'] || row['Labor Cost'] || row['ค่าจ้างแรงงาน'] || Object.values(row)[2]);
+      const water = cleanVal(row[mapping.waterCol] || row['ค่าน้ำประปา (บาท)'] || row['ค่าน้ำประปา(บาท)'] || row['Water Bill'] || row['ค่าน้ำ'] || Object.values(row)[3]);
+      const electric = cleanVal(row[mapping.electricCol] || row['ค่าไฟฟ้า (บาท)'] || row['ค่าไฟฟ้า(บาท)'] || row['Electric Bill'] || row['ค่าไฟฟ้า'] || Object.values(row)[4]);
+      const gas = cleanVal(row[mapping.gasCol] || row['ค่าน้ำมัน (บาท)'] || row['ค่าแก๊ส(บาท)'] || row['Gas/Fuel Cost'] || row['ค่าแก๊ส'] || Object.values(row)[5]);
+      const total = cleanVal(row[mapping.totalCol] || row['Total Cost'] || row['รวมค่าใช้จ่ายส่วนกลาง'] || Object.values(row)[6]);
 
       return {
         ...row,

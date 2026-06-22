@@ -98,12 +98,13 @@ export default function SaleAnalysis() {
   // Clean and filter transactions
   const cleanTransactions = useMemo(() => {
     return data.map(item => {
-      const { month, year, monthKey } = getParsedMonthYear(item['Date'] || item['วันที่'] || item['date']);
-      const qty = parseFloat(String(item['ยอดขาย (ชิ้น)'] || item['Qty'] || 0).replace(/,/g, '')) || 0;
-      const price = parseFloat(String(item['ราคาขาย'] || item['Price'] || 0).replace(/,/g, '')) || 0;
-      const revenue = parseFloat(String(item['มูลค่าขาย'] || item['Revenue'] || item['Total'] || 0).replace(/,/g, '')) || (qty * price);
-      const product = String(item['ชื่อสินค้า'] || item['Product'] || '-');
-      const category = String(item['ประเภท'] || item['Category'] || 'Others');
+      const dateVal = item['Date'] || item['วันที่'] || item['date'] || Object.values(item)[0] || '';
+      const { month, year, monthKey } = getParsedMonthYear(dateVal);
+      const qty = parseFloat(String(item['ยอดขาย (ชิ้น)'] || item['ยอดขาย(ชิ้น)'] || item['Qty'] || item['จำนวน'] || Object.values(item)[3] || 0).replace(/,/g, '')) || 0;
+      const price = parseFloat(String(item['ราคาขาย'] || item['ราคาขาย(บาท)'] || item['Price'] || Object.values(item)[4] || 0).replace(/,/g, '')) || 0;
+      const revenue = parseFloat(String(item['มูลค่าขาย'] || item['มูลค่าขาย(บาท)'] || item['Revenue'] || item['Total'] || Object.values(item)[5] || 0).replace(/,/g, '')) || (qty * price);
+      const product = String(item['ชื่อสินค้า'] || item['Product'] || Object.values(item)[2] || '-');
+      const category = String(item['กลุ่มสินค้า'] || item['ประเภท'] || item['Category'] || Object.values(item)[1] || 'Others');
       return {
         ...item,
         parsedMonth: month,

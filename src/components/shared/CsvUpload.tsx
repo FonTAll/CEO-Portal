@@ -56,16 +56,37 @@ export function CsvUpload({
         let rows: string[][] = [];
 
         if (isExcel) {
-          const workbook = XLSX.read(data, { type: 'binary' });
+          const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as string[][];
+          rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' }) as string[][];
+          processExtractedRows(rows);
         } else {
-          // Fallback simple CSV parsing
-          const text = data as string;
-          rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
+          import('papaparse').then(Papa => {
+            const text = data as string;
+            Papa.parse(text, {
+              skipEmptyLines: true,
+              complete: (results) => {
+                const parsedRows = results.data as string[][];
+                processExtractedRows(parsedRows);
+              },
+              error: (err: any) => {
+                setError('Failed to parse CSV: ' + err.message);
+                setIsProcessing(false);
+              }
+            });
+          });
+          return; // Wait for Papa.parse to finish async
         }
-
+      } catch (err) {
+        console.error('Error parsing file:', err);
+        setError('Failed to process file. Please check the file format.');
+        setIsProcessing(false);
+      }
+    };
+    
+    const processExtractedRows = (rows: string[][]) => {
+      try {
         if (rows.length < 1 || (rows.length === 1 && rows[0].length === 0)) {
           setError('The file is empty.');
           setIsProcessing(false);

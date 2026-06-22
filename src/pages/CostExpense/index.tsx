@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CsvUpload } from '../../components/shared/CsvUpload';
 import { api } from '../../services/api';
 import { DraggableModal } from '../../components/shared/DraggableModal';
-import { BarChart3, Upload, Plus, List, Search, ChevronLeft, ChevronRight, Calculator, Activity, DollarSign, HelpCircle, X, LayoutGrid, Briefcase, Zap, Database, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BarChart3, Upload, Plus, List, Search, ChevronLeft, ChevronRight, Calculator, Activity, DollarSign, HelpCircle, X, LayoutGrid, Briefcase, Zap, Database, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -113,13 +113,8 @@ export default function CostExpense() {
         const response = await api.post('read', 'CostExpense', null, { limit: 2000, offset: 0 });
         if (response && response.status === 'success' && response.data) {
           const items = response.data.items || [];
-          if (items.length > 0) {
-            setData(items);
-            localStorage.setItem('costExpenseCache', JSON.stringify(items));
-          } else {
-            const cached = localStorage.getItem('costExpenseCache');
-            if (cached) setData(JSON.parse(cached));
-          }
+          setData(items);
+          localStorage.setItem('costExpenseCache', JSON.stringify(items));
         } else {
           const cached = localStorage.getItem('costExpenseCache');
           if (cached) setData(JSON.parse(cached));
@@ -136,28 +131,93 @@ export default function CostExpense() {
     loadExpenseData();
   }, []);
 
+  const handleClearData = async () => {
+    if (!window.confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลทั้งหมด?')) return;
+    
+    try {
+      setIsLoading(true);
+      if (data.length > 0) {
+        await api.post('delete', 'CostExpense', data);
+      }
+      localStorage.removeItem('costExpenseCache');
+      setData([]);
+      setAlertInfo({ type: 'success', message: 'ลบข้อมูลทั้งหมดเรียบร้อยแล้ว' });
+    } catch (err) {
+      console.error(err);
+      setAlertInfo({ type: 'error', message: 'ลบข้อมูลล้มเหลว' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUpload = async (uploadedData: any[]) => {
     const timestamp = new Date().toISOString();
     
-    // Auto-enrich dataset with unique IDs for secure database syncs
-    const cleanRows = uploadedData.map((row, index) => ({
-      ...row,
-      id: row.id ? String(row.id) : `CE-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
-      createdAt: row.createdAt || timestamp,
-      updatedAt: timestamp
-    }));
+    // We will separate operations into WRITES (new records) and UPDATES (existing records with matching dates)
+    const rowsToUpdate: any[] = [];
+    const rowsToWrite: any[] = [];
+    const updatedDataList = [...data];
+
+    uploadedData.forEach((row, index) => {
+      const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || Object.values(row)[0] || '';
+      const trimDateVal = String(dateVal).trim();
+
+      // Find if a row with the same date already exists in the existing database rows
+      const existingRowIndex = updatedDataList.findIndex(existingRow => {
+        const existingDateVal = String(existingRow[mapping.dateCol] || existingRow['Date'] || existingRow['วันที่'] || Object.values(existingRow)[0] || '').trim();
+        return existingDateVal !== '' && existingDateVal === trimDateVal;
+      });
+
+      const mappedRow = { ...row };
+      if (dateVal) {
+        mappedRow[mapping.dateCol] = dateVal;
+      }
+
+      if (existingRowIndex !== -1) {
+        // Date matches existing row, so overwrite it
+        const existingRow = updatedDataList[existingRowIndex];
+        const updatedRow = {
+          ...mappedRow,
+          id: existingRow.id,
+          createdAt: existingRow.createdAt || timestamp,
+          updatedAt: timestamp
+        };
+        rowsToUpdate.push(updatedRow);
+        updatedDataList[existingRowIndex] = updatedRow; // Update in-place locally
+      } else {
+        // Date not found, so create a new record
+        const newRow = {
+          ...mappedRow,
+          id: row.id ? String(row.id) : `CE-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+          createdAt: row.createdAt || timestamp,
+          updatedAt: timestamp
+        };
+        rowsToWrite.push(newRow);
+        updatedDataList.push(newRow); // Append to local state list
+      }
+    });
 
     const previousData = data;
     // Local state display (Snappy UI feedback)
-    setData(cleanRows);
+    setData(updatedDataList);
     setIsModalOpen(false);
     setAlertInfo(null);
 
     // Save batch to cloud datastores (Firebase + Sheets)
     try {
       setIsLoading(true);
-      await api.post('write', 'CostExpense', cleanRows);
-      localStorage.setItem('costExpenseCache', JSON.stringify(cleanRows));
+      
+      // Perform updates for matching dates
+      if (rowsToUpdate.length > 0) {
+        await api.post('update', 'CostExpense', rowsToUpdate);
+      }
+      
+      // Perform writes for non-duplicate/new dates
+      if (rowsToWrite.length > 0) {
+        await api.post('write', 'CostExpense', rowsToWrite);
+      }
+
+      localStorage.setItem('costExpenseCache', JSON.stringify(updatedDataList));
       setAlertInfo({
         type: 'success',
         message: t('Successfully uploaded and synchronized cost & expense data with Google Sheet & Firestore.', 'อัปโหลดและบันทึกข้อมูลต้นทุนค่าใช้จ่ายลง Google Sheet เรียบร้อยแล้ว!')
@@ -351,6 +411,9 @@ export default function CostExpense() {
               <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#212c46] hover:bg-[#414757] text-white px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md transition-all">
                 <Plus size={14} strokeWidth={3} /> {t('Add Data', 'เพิ่มข้อมูล')}
               </button>
+              <button onClick={handleClearData} className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border border-rose-200">
+                <Trash2 size={14} strokeWidth={3} /> {t('Clear', 'ลบข้อมูล')}
+              </button>
             </div>
           </div>
 
@@ -427,8 +490,6 @@ export default function CostExpense() {
 
         </div>
       </div>
-
-      <div className="mt-8"></div>
 
       {/* Upload Modal */}
       <DraggableModal

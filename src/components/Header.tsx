@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Calendar, Box, Target, Bell, Globe, AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { Clock, Calendar, Box, Target, Bell, Globe, AlertTriangle, CheckCircle2, Info, TrendingDown, TrendingUp } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import clsx from 'clsx';
@@ -7,8 +7,53 @@ import clsx from 'clsx';
 export default function Header() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
+  const [metricAlert, setMetricAlert] = useState<{type: 'spike' | 'drop', prev: number, curr: number, amount: number, isReady: boolean}>({type: 'spike', prev: 0, curr: 0, amount: 0, isReady: false});
   const notificationRef = useRef<HTMLDivElement>(null);
   const { language, toggleLanguage, t } = useLanguage();
+
+  useEffect(() => {
+    // Check local storage for revenue data to compute drops/spikes
+    const checkMetrics = () => {
+      try {
+        const cached = localStorage.getItem('saleRevenueCache');
+        if (cached) {
+          const revenueData = JSON.parse(cached);
+          const monthlyRev: Record<string, number> = {};
+          
+          revenueData.forEach((row: any) => {
+            const d = new Date(row['วันที่'] || row['Date'] || new Date());
+            if (isNaN(d.getTime())) return;
+            // Group by year-month for sorting
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthlyRev[key] = (monthlyRev[key] || 0) + parseFloat((row['มูลค่าขาย(บาท)'] || '0').toString().replace(/,/g, '')) || 0;
+          });
+
+          const sortedMonths = Object.keys(monthlyRev).sort();
+          if (sortedMonths.length >= 2) {
+            const currKey = sortedMonths[sortedMonths.length - 1];
+            const prevKey = sortedMonths[sortedMonths.length - 2];
+            const curr = monthlyRev[currKey];
+            const prev = monthlyRev[prevKey];
+            const diff = curr - prev;
+            const percent = (Math.abs(diff) / prev) * 100;
+            
+            if (percent > 5) { // 5% threshold for significant drop/spike
+              setMetricAlert({
+                type: diff > 0 ? 'spike' : 'drop',
+                prev: prev,
+                curr: curr,
+                amount: percent,
+                isReady: true
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkMetrics();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -99,7 +144,7 @@ export default function Header() {
                   className="relative w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center text-[#3f809e] hover:bg-[#f8f9fa] transition-all group border border-[#cdd0db]/50 hover:scale-105 shrink-0"
               >
                   <Bell size={18} className={clsx("transition-transform", showNotifications ? "text-[#b58c4f]" : "group-hover:rotate-12")} strokeWidth={2} />
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#932c2e] rounded-full shadow-[0_0_0_2px_#ffffff]"></span>
+                  <span className={clsx("absolute top-2.5 right-2.5 w-2 h-2 rounded-full shadow-[0_0_0_2px_#ffffff]", metricAlert.isReady && metricAlert.type === 'drop' ? 'bg-[#932c2e] animate-pulse' : 'bg-[#b58c4f]')}></span>
               </button>
 
               <AnimatePresence>
@@ -116,6 +161,28 @@ export default function Header() {
                       <span className="text-[10px] font-bold bg-[#3f809e] text-white px-1.5 py-0.5 rounded">3 {t('NEW', 'ใหม่')}</span>
                     </div>
                     <div className="max-h-80 overflow-y-auto custom-scrollbar flex flex-col">
+                        {metricAlert.isReady && (
+                           <div className="p-4 border-b border-[#eaeaec]/50 hover:bg-[#f8f9fa] transition-colors cursor-pointer flex gap-3 items-start group">
+                             <div className={clsx("w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5", metricAlert.type === 'spike' ? "bg-[#657f4d]/10" : "bg-[#932c2e]/10")}>
+                               {metricAlert.type === 'spike' ? (
+                                  <TrendingUp size={14} className="text-[#657f4d] group-hover:rotate-12 transition-transform" />
+                               ) : (
+                                  <TrendingDown size={14} className="text-[#932c2e] group-hover:-rotate-12 transition-transform" />
+                               )}
+                             </div>
+                             <div className="flex flex-col gap-1 w-full">
+                               <div className="flex justify-between items-start">
+                                 <span className={clsx("text-xs font-black uppercase tracking-wider", metricAlert.type === 'spike' ? 'text-[#657f4d]' : 'text-[#932c2e]')}>
+                                   {metricAlert.type === 'spike' ? 'REVENUE SPIKE DETECTED' : 'REVENUE DROP DETECTED'}
+                                 </span>
+                                 <span className="text-[9px] font-bold text-[#b58c4f]">Just Now</span>
+                               </div>
+                               <span className="text-[10px] font-medium text-[#7a8b95] leading-relaxed">
+                                 Revenue shows a significant {metricAlert.type} of {metricAlert.amount.toFixed(1)}% compared to the previous month.
+                               </span>
+                             </div>
+                           </div>
+                        )}
                         <div className="p-4 border-b border-[#eaeaec]/50 hover:bg-[#f8f9fa] transition-colors cursor-pointer flex gap-3 items-start group">
                           <div className="w-8 h-8 rounded-full bg-[#932c2e]/10 flex items-center justify-center shrink-0 mt-0.5">
                             <AlertTriangle size={14} className="text-[#932c2e]" />

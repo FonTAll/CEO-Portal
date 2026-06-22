@@ -47,8 +47,8 @@ function UserGuidePanel({ isOpen, onClose }: any) {
       <div className={`fixed inset-y-0 right-0 z-[200] w-full md:w-[500px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col border-l-2 border-[${THEME.gold}] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex justify-between items-center p-5 px-6 border-b-2 border-[#b7a159] bg-[#212c46] text-white shrink-0">
           <div>
-            <h3 className="font-black flex items-center gap-3 uppercase tracking-widest text-lg"><Icons.BrainCircuit size={22} className="text-[#b7a159]"/> SMART HR GUIDE</h3>
-            <p className="text-[12px] font-bold text-[#d7d7d7] uppercase tracking-widest mt-1.5">HR Assistant Guide</p>
+            <h3 className="font-black flex items-center gap-3 uppercase tracking-widest text-lg"><Icons.BrainCircuit size={22} className="text-[#b7a159]"/> CEO AI COPILOT GUIDE</h3>
+            <p className="text-[12px] font-bold text-[#d7d7d7] uppercase tracking-widest mt-1.5">Executive Management Assistant</p>
           </div>
           <button onClick={onClose} className="p-2 text-white/50 hover:text-[#932c2e] hover:bg-white/10 rounded-xl transition-colors"><Icons.X size={24}/></button>
         </div>
@@ -56,30 +56,30 @@ function UserGuidePanel({ isOpen, onClose }: any) {
         <div className="flex-1 overflow-y-auto p-6 space-y-6 text-[#414757] text-[12px] leading-relaxed custom-scrollbar bg-white">
           <section className="animate-fadeIn">
             <h4 className="text-[14px] font-black text-[#212c46] mb-3 uppercase flex items-center gap-2 border-b-2 border-[#d7d7d7] pb-2 font-mono">
-              <Icons.Users size={18} className="text-[#b7a159]"/> 1. HR Analytics & Data
+              <Icons.TrendingUp size={18} className="text-[#b7a159]"/> 1. Revenue & Margin Analytics
             </h4>
-            <p className="text-[12px] mb-3">AI สามารถช่วยคุณวิเคราะห์ข้อมูลพนักงาน, ตรวจสอบรายงาน และรวบรวมสถิติ:</p>
+            <p className="text-[12px] mb-3">AI สามารถช่วยคุณวิเคราะห์ข้อมูลรายได้, อัตรากำไรขั้นต้น และแนะนำกลยุทธ์:</p>
             <ul className="list-none pl-0 space-y-3">
                 <li className="flex items-start gap-2 bg-[#f8f9fa] p-3 rounded-xl border border-[#eaeaec]">
                   <Icons.PieChart size={16} className="shrink-0 text-[#4d87a8] mt-0.5"/> 
-                  <div><strong className="text-[#4d87a8]">Data Review:</strong> สรุปสถิติอัตรากำลังคน การขาดลามาสาย</div>
+                  <div><strong className="text-[#4d87a8]">Data Review:</strong> สรุปยอดขาย, ต้นทุน, และผลกำไรรายไตรมาสหรือรายปี</div>
                 </li>
                 <li className="flex items-start gap-2 bg-[#f8f9fa] p-3 rounded-xl border border-[#eaeaec]">
-                  <Icons.ShieldCheck size={16} className="shrink-0 text-[#657f4d] mt-0.5"/> 
-                  <div><strong className="text-[#657f4d]">Policy Compliance:</strong> ตรวจสอบความสอดคล้องกับระเบียบข้อบังคับบริษัท</div>
+                  <Icons.Target size={16} className="shrink-0 text-[#657f4d] mt-0.5"/> 
+                  <div><strong className="text-[#657f4d]">Strategic Recommendations:</strong> เสนอแนะจุดที่ควรปรับปรุงเพื่อเพิ่ม Profit Margin</div>
                 </li>
             </ul>
           </section>
           
           <section className="animate-fadeIn" style={{ animationDelay: '0.1s' }}>
             <h4 className="text-[14px] font-black text-[#212c46] mb-3 uppercase flex items-center gap-2 border-b-2 border-[#d7d7d7] pb-2 font-mono">
-              <Icons.MessageSquare size={18} className="text-[#d96245]"/> 2. HR Support
+              <Icons.BarChart2 size={18} className="text-[#d96245]"/> 2. Expense & Cost Control
             </h4>
-            <p className="text-[12px] mb-3">ให้ AI เป็นผู้ช่วยในการเตรียมข้อมูลเบื้องต้นสำหรับงาน HR:</p>
+            <p className="text-[12px] mb-3">ให้ AI เป็นผู้ช่วยในการตรวจสอบค่าใช้จ่ายและควบคุมต้นทุนของบริษัท:</p>
             <ul className="list-disc pl-5 mt-2 space-y-2 text-[12px]">
-                <li><strong className="text-[#d96245]">Draft Communications:</strong> สร้างจดหมายและประกาศภายในองค์กร</li>
-                <li><strong className="text-[#212c46]">Recruitment:</strong> ช่วยร่าง Job Description หรือ คำถามสัมภาษณ์</li>
-                <li><strong className="text-[#657f4d]">Employee Relations:</strong> ให้คำแนะนำกิจกรรมสร้างความผูกพันพนักงาน</li>
+                <li><strong className="text-[#d96245]">Cost Breakdown:</strong> แยกแยะและวิเคราะห์โครงสร้างต้นทุนที่สำคัญ</li>
+                <li><strong className="text-[#212c46]">Anomaly Detection:</strong> แจ้งเตือนเมื่อพบตัวเลขค่าใช้จ่ายที่สูงผิดปกติ</li>
+                <li><strong className="text-[#657f4d]">Budget Optimization:</strong> แนะนำวิธีการประหยัดงบและปรับปรุงกระแสเงินสด</li>
             </ul>
           </section>
 
@@ -87,7 +87,7 @@ function UserGuidePanel({ isOpen, onClose }: any) {
             <h4 className="text-[14px] font-black text-[#212c46] mb-3 uppercase flex items-center gap-2 border-b-2 border-[#d7d7d7] pb-2 font-mono">
               <Icons.HelpCircle size={18} className="text-[#3f809e]"/> 3. How to Ask
             </h4>
-            <p className="text-[12px] bg-[#3f809e]/10 p-3 rounded-xl border border-[#3f809e]/30 text-[#212c46]">เลือก <b>Prompt Recommendations</b> ที่เราเตรียมไว้ให้ หรือพิมพ์คำสั่ง เช่น "สรุปขั้นตอนการประเมินผลการทำงาน" เพื่อรับข้อมูลที่แม่นยำและรวดเร็ว</p>
+            <p className="text-[12px] bg-[#3f809e]/10 p-3 rounded-xl border border-[#3f809e]/30 text-[#212c46]">เลือก <b>Prompt Recommendations</b> ที่เราเตรียมไว้ให้ หรือพิมพ์คำสั่ง เช่น "สรุปเปรียบเทียบกำไรขั้นต้น (Margin) ของเดือนนี้เทียบกับเดือนที่แล้ว" เพื่อรับข้อมูลวิเคราะห์เชิงลึก</p>
           </section>
         </div>
         
@@ -100,10 +100,10 @@ function UserGuidePanel({ isOpen, onClose }: any) {
 }
 
 const suggestedPrompts = [
-  { id: 'p1', title: 'HR Analytics', text: 'สรุปข้อมูลพนักงานเข้าใหม่และการลาออกของไตรมาสที่ผ่านมา', icon: 'PieChart' },
-  { id: 'p2', title: 'Leave Management', text: 'ตรวจสอบกฎระเบียบและนโยบายการลาพักร้อนประจำปี', icon: 'CalendarDays' },
-  { id: 'p3', title: 'Performance Review', text: 'ช่วยร่าง email แจ้งพนักงานเพื่อเตรียมตัวประเมินผลการทำงานปลายปี', icon: 'Target' },
-  { id: 'p4', title: 'Employee Relations', text: 'แนะนำกิจกรรมสร้างความสัมพันธ์และพนักงานสัมพันธ์ที่น่าสนใจสำหรับบริษัท', icon: 'Heart' }
+  { id: 'p1', title: 'Revenue Scan', text: 'สรุปภาพรวมรายได้ยอดขายในไตรมาสล่าสุดเทียบกับเป้าหมาย', icon: 'TrendingUp' },
+  { id: 'p2', title: 'Expense Insight', text: 'ชี้แจงค่าใช้จ่ายหมวดหมู่ที่มีความผิดปกติหรือสูงเกินเกณฑ์ประจำเดือน', icon: 'AlertCircle' },
+  { id: 'p3', title: 'Margin Analysis', text: 'ประเมินสัดส่วน Margin และแนะนำกลยุทธ์เพื่อรับมือกับต้นทุนที่สูงขึ้น', icon: 'Target' },
+  { id: 'p4', title: 'Executive Summary', text: 'จัดทำรายงานสรุปข้อมูลทางการเงินสำหรับผู้บริหารเพื่อใช้ในการประชุมพรุ่งนี้', icon: 'BarChart2' }
 ];
 
 export default function AiCopilot() {
@@ -111,7 +111,7 @@ export default function AiCopilot() {
   const [activeMode, setActiveMode] = useState('chat');
   
   const [messages, setMessages] = useState([
-    { id: 1, role: 'ai', text: 'สวัสดีค่ะ! ฉันคือ T All BOT ผู้ช่วยส่วนตัวของคุณในระบบ SMART HR. วันนี้มีข้อมูลพนักงานหรือรายงานส่วนไหนที่คุณต้องการให้ฉันช่วยจัดการไหมคะ?', timestamp: '08:00 AM' }
+    { id: 1, role: 'ai', text: 'สวัสดีค่ะ! ฉันคือ Executive Copilot ผู้ช่วยส่วนตัวของผู้บริหารบนระบบ CEO PORTAL วันนี้ต้องการให้ฉันช่วยวิเคราะห์รายได้ ต้นทุน หรือสรุปภาพรวมแผนกไหนเป็นพิเศษไหมคะ?', timestamp: '08:00 AM' }
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);

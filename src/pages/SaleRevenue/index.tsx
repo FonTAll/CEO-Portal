@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { CsvUpload } from '../../components/shared/CsvUpload';
 import { api } from '../../services/api';
 import { DraggableModal } from '../../components/shared/DraggableModal';
-import { TrendingUp, Upload, Settings, Plus, List, Search, ChevronLeft, ChevronRight, BarChart2, DollarSign, Package, HelpCircle, X, LayoutGrid, Zap, Database, Briefcase, CheckCircle2, AlertCircle } from 'lucide-react';
+import { TrendingUp, Upload, Settings, Plus, List, Search, ChevronLeft, ChevronRight, BarChart2, DollarSign, Package, HelpCircle, X, LayoutGrid, Zap, Database, Briefcase, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 const THEME = {
   primary: '#212c46',
@@ -19,7 +20,7 @@ const THEME = {
   revenueBlue: '#0ea5e9'
 };
 
-const COMPARISON_MONTHS = ['Jan-25', 'Feb-25', 'Mar-25', 'Apr-25', 'May-25', 'Jun-25', 'Jul-25'];
+const COMPARISON_MONTHS = ['Jan-25', 'Feb-25', 'Mar-25', 'Apr-25', 'May-25', 'Jun-25', 'Jul-25', 'Aug-25', 'Sep-25', 'Oct-25', 'Nov-25', 'Dec-25'];
 
 interface ComparisonCell {
   qty: number | null;
@@ -506,13 +507,8 @@ export default function SaleRevenue() {
         const response = await api.post('read', 'SaleRevenue', null, { limit: 2000, offset: 0 });
         if (response && response.status === 'success' && response.data) {
           const items = response.data.items || [];
-          if (items.length > 0) {
-            setData(items);
-            localStorage.setItem('saleRevenueCache', JSON.stringify(items));
-          } else {
-            const cached = localStorage.getItem('saleRevenueCache');
-            if (cached) setData(JSON.parse(cached));
-          }
+          setData(items);
+          localStorage.setItem('saleRevenueCache', JSON.stringify(items));
         } else {
           const cached = localStorage.getItem('saleRevenueCache');
           if (cached) setData(JSON.parse(cached));
@@ -601,28 +597,94 @@ export default function SaleRevenue() {
     };
   });
 
+  const handleClearData = async () => {
+    if (!window.confirm('คุณแน่ใจหรือไม่ที่จะลบข้อมูลทั้งหมด?')) return;
+    
+    try {
+      setIsLoading(true);
+      // Delete via API, passing all existing items
+      if (data.length > 0) {
+        await api.post('delete', 'SaleRevenue', data);
+      }
+      localStorage.removeItem('saleRevenueCache');
+      setData([]);
+      setAlertInfo({ type: 'success', message: 'ลบข้อมูลทั้งหมดเรียบร้อยแล้ว' });
+    } catch (err) {
+      console.error(err);
+      setAlertInfo({ type: 'error', message: 'ลบข้อมูลล้มเหลว' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUpload = async (uploadedData: any[]) => {
     const timestamp = new Date().toISOString();
     
-    // Auto-generate ids & schema fields for dual writes
-    const cleanRows = uploadedData.map((row, index) => ({
-      ...row,
-      id: row.id ? String(row.id) : `SR-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
-      createdAt: row.createdAt || timestamp,
-      updatedAt: timestamp
-    }));
+    // We will separate operations into WRITES (new records) and UPDATES (existing records with matching dates)
+    const rowsToUpdate: any[] = [];
+    const rowsToWrite: any[] = [];
+    const updatedDataList = [...data];
+
+    uploadedData.forEach((row, index) => {
+      const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || '';
+      const trimDateVal = String(dateVal).trim();
+
+      // Find if a row with the same date already exists in the existing database rows
+      const existingRowIndex = updatedDataList.findIndex(existingRow => {
+        const existingDateVal = String(existingRow[mapping.dateCol] || existingRow['Date'] || existingRow['วันที่'] || '').trim();
+        return existingDateVal !== '' && existingDateVal === trimDateVal;
+      });
+
+      const mappedRow = { ...row };
+      if (dateVal) {
+        mappedRow[mapping.dateCol] = dateVal;
+      }
+
+      if (existingRowIndex !== -1) {
+        // Date matches existing row, so overwrite it
+        const existingRow = updatedDataList[existingRowIndex];
+        const updatedRow = {
+          ...mappedRow,
+          id: existingRow.id,
+          createdAt: existingRow.createdAt || timestamp,
+          updatedAt: timestamp
+        };
+        rowsToUpdate.push(updatedRow);
+        updatedDataList[existingRowIndex] = updatedRow; // Update in-place locally
+      } else {
+        // Date not found, so create a new record
+        const newRow = {
+          ...mappedRow,
+          id: row.id ? String(row.id) : `SR-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+          createdAt: row.createdAt || timestamp,
+          updatedAt: timestamp
+        };
+        rowsToWrite.push(newRow);
+        updatedDataList.push(newRow); // Append to local state list
+      }
+    });
 
     const previousData = data;
     // Optimistic UI update
-    setData(cleanRows);
+    setData(updatedDataList);
     setIsModalOpen(false);
     setAlertInfo(null);
 
     // Synchronous Dual Write to both Google Sheet & Firebase
     try {
       setIsLoading(true);
-      await api.post('write', 'SaleRevenue', cleanRows);
-      localStorage.setItem('saleRevenueCache', JSON.stringify(cleanRows));
+      
+      // Perform updates for matching dates
+      if (rowsToUpdate.length > 0) {
+        await api.post('update', 'SaleRevenue', rowsToUpdate);
+      }
+      
+      // Perform writes for non-duplicate/new dates
+      if (rowsToWrite.length > 0) {
+        await api.post('write', 'SaleRevenue', rowsToWrite);
+      }
+
+      localStorage.setItem('saleRevenueCache', JSON.stringify(updatedDataList));
       setAlertInfo({
         type: 'success',
         message: t('Successfully uploaded and synchronized data with Google Sheet & Firestore.', 'อัปโหลดและบันทึกข้อมูลลง Google Sheet เรียบร้อยแล้ว!')
@@ -723,6 +785,28 @@ export default function SaleRevenue() {
     const qty = parseFloat((row['ยอดขาย (ชิ้น)'] || '0').toString().replace(/,/g, ''));
     return sum + (isNaN(qty) ? 0 : qty);
   }, 0);
+
+  const monthlyTrendData = useMemo(() => {
+    const groups = filteredData.reduce((acc, row) => {
+      const rawDate = row[mapping.dateCol] || row['Date'] || row['วันที่'];
+      if (!rawDate) return acc;
+      
+      const d = getParsedDate(rawDate);
+      if (!d || isNaN(d.getTime())) return acc;
+      
+      const monthKey = d.toLocaleString('en-US', { month: 'short', year: '2-digit' }); // e.g. "Jan 25"
+      if (!acc[monthKey]) {
+        acc[monthKey] = { label: monthKey, revenue: 0, sortKey: d.getTime() };
+      }
+      const revenue = parseFloat((row[mapping.revenueCol] || '0').toString().replace(/,/g, ''));
+      if (!isNaN(revenue)) {
+        acc[monthKey].revenue += revenue;
+      }
+      return acc;
+    }, {} as Record<string, { label: string, revenue: number, sortKey: number }>);
+    
+    return Object.values(groups).sort((a: any, b: any) => a.sortKey - b.sortKey);
+  }, [filteredData, mapping]);
 
   const formatMB = (val: number) => {
     return '฿ ' + (val / 1000000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MB';
@@ -836,6 +920,31 @@ export default function SaleRevenue() {
             <KpiCard label={t('TOTAL RECORDS', 'จำนวนบันทึกซิงค์')} value={filteredData.length} icon={List} colorAccent={THEME.success} colorValue={THEME.success} desc={t('SYNCED RECORDS', 'รายการบันทึก')} />
         </div>
 
+        {/* HISTORICAL PERFORMANCE TREND CHART OVER TIME */}
+        {monthlyTrendData.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-[#eaeaec] p-6 mt-4 flex flex-col shrink-0 animate-fadeIn">
+            <h4 className="text-[14px] font-black tracking-widest text-[#212c46] uppercase mb-4 flex items-center gap-2">
+              <TrendingUp size={16} className="text-[#b58c4f]" /> 
+              {t('HISTORICAL PERFORMANCE TREND', 'แนวโน้มรายได้สะสมรายเดือน')}
+            </h4>
+            <div className="w-full h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eaeaec" />
+                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 'bold', fill: '#7a8b95' }} dy={10} />
+                  <YAxis hide={true} />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #eaeaec', fontSize: '12px', fontWeight: 'bold' }}
+                    itemStyle={{ color: '#212c46' }}
+                    formatter={(value: any) => [`฿ ${(Number(value) / 1000000).toFixed(2)} MB`, t('Revenue', 'รายได้')]}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9', stroke: 'white', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
         {/* Table Container */}
         <div className="bg-white rounded-2xl shadow-sm border border-[#eaeaec] overflow-hidden flex flex-col mt-4 relative">
           {isLoading && (
@@ -864,9 +973,14 @@ export default function SaleRevenue() {
                 />
               </div>
               {activeTab === 'ALL' && (
-                <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#212c46] hover:bg-[#414757] text-white px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md transition-all">
-                  <Plus size={14} strokeWidth={3} /> {t('Add Data', 'เพิ่มข้อมูล')}
-                </button>
+                <>
+                  <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-[#212c46] hover:bg-[#414757] text-white px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-md transition-all">
+                    <Plus size={14} strokeWidth={3} /> {t('Add Data', 'เพิ่มข้อมูล')}
+                  </button>
+                  <button onClick={handleClearData} className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-4 h-[38px] rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border border-rose-200">
+                    <Trash2 size={14} strokeWidth={3} /> {t('Clear', 'ลบข้อมูล')}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -912,8 +1026,6 @@ export default function SaleRevenue() {
                   <tr className="border-b border-[#b7a159]/40">
                     <th rowSpan={2} className="px-4 py-3 text-[12px] font-black tracking-wider uppercase text-center border-r border-[#b7a159]/20 align-middle whitespace-nowrap bg-[#212c46]">{t('TYPE', 'ประเภท')}</th>
                     <th rowSpan={2} className="px-4 py-3 text-[12px] font-black tracking-wider uppercase text-left border-r border-[#b7a159]/20 align-middle min-w-[200px] whitespace-nowrap bg-[#212c46]">{t('PRODUCT', 'ชื่อสินค้า')}</th>
-                    <th rowSpan={2} className="px-4 py-3 text-[12px] font-black tracking-wider text-right border-r border-[#b7a159]/20 align-middle whitespace-nowrap bg-[#212c46]">{t('COST', 'ราคาทุน')}</th>
-                    <th rowSpan={2} className="px-4 py-3 text-[12px] font-black tracking-wider text-right border-r border-[#b7a159]/20 align-middle whitespace-nowrap bg-[#212c46]">{t('PRICE', 'ราคาขาย')}</th>
                     {COMPARISON_MONTHS.map(m => (
                       <th key={m} colSpan={2} className="px-4 py-1.5 text-[12px] font-black tracking-wider text-center border-r border-[#b7a159]/20 bg-[#2d3a5a] whitespace-nowrap">
                         {m}
@@ -955,8 +1067,6 @@ export default function SaleRevenue() {
                           >
                             <td className="px-4 py-2.5 text-[12px] font-black text-[#5e6a75] text-center bg-[#f1f3f5] border-r border-[#eaeaec] whitespace-nowrap">{prod.category}</td>
                             <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] border-r border-[#eaeaec] truncate max-w-[220px] whitespace-nowrap" title={prod.name}>{prod.name}</td>
-                            <td className="px-3 py-2.5 text-[12px] font-mono text-right text-[#7a8b95] border-r border-[#eaeaec] whitespace-nowrap">{prod.cost !== null ? prod.cost.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
-                            <td className="px-3 py-2.5 text-[12px] font-mono text-right text-[#212c46] border-r border-[#eaeaec] whitespace-nowrap">{prod.price.toLocaleString('en-US')}</td>
                             {COMPARISON_MONTHS.map(m => {
                               const cell = prod.months[m] || { qty: null, val: null };
                               const isEditingQty = editingCell && editingCell.productIndex === globalIdx && editingCell.month === m && editingCell.type === 'qty';
@@ -1053,7 +1163,15 @@ export default function SaleRevenue() {
                         >
                           {activeTab === 'ALL' ? (
                             <>
-                              <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap">{row[mapping.dateCol] || row['Date'] || row['วันที่'] || '-'}</td>
+                              <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap">
+                                {(()=>{
+                                  const rawDate = row[mapping.dateCol] || row['Date'] || row['วันที่'];
+                                  if (!rawDate) return '-';
+                                  const d = getParsedDate(rawDate);
+                                  if (!d || isNaN(d.getTime())) return String(rawDate);
+                                  return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                                })()}
+                              </td>
                               <td className="px-4 py-2.5 text-[12px] font-black text-[#b58c4f] whitespace-nowrap">{row['ประเภท'] || '-'}</td>
                               <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap max-w-[250px] truncate">{row[mapping.productCol] || '-'}</td>
                               <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row['ราคาทุน'] || '-'}</td>
@@ -1113,8 +1231,6 @@ export default function SaleRevenue() {
 
         </div>
       </div>
-
-      <div className="mt-8"></div>
 
       {/* Upload Modal */}
       <DraggableModal

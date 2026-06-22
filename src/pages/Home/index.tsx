@@ -21,7 +21,7 @@ import {
   Calendar,
   Library,
   DollarSign,
-  PieChart,
+  PieChart as PieChartIcon,
   Award,
   Globe,
   Bell,
@@ -81,7 +81,9 @@ import {
   Area,
   Cell,
   PieChart,
-  Pie
+  Pie,
+  LineChart,
+  Line
 } from 'recharts';
 import { RefreshCcw, LayoutGrid } from 'lucide-react';
 
@@ -198,25 +200,25 @@ const HeroBanner = () => {
         <div className="relative z-10 h-full flex flex-col md:flex-row items-center justify-between p-4 md:p-6 w-full gap-6">
           <div className="flex flex-col justify-center flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <Users size={12} className="text-[#b7a159]" />
-              <span className="text-[9px] text-[#b7a159] font-black uppercase tracking-[0.2em] drop-shadow-sm">People Operations</span>
+              <TrendingUp size={12} className="text-[#b7a159]" />
+              <span className="text-[9px] text-[#b7a159] font-black uppercase tracking-[0.2em] drop-shadow-sm">Executive Dashboard</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-none mb-3 drop-shadow-md">
-              Empowering <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b58c4f] to-[#f3e5ab]">Strategic Talent</span>
+              CEO <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#b58c4f] to-[#f3e5ab]">PORTAL</span>
             </h2>
             <div className="mb-6">
               <p className="text-white/90 text-xs font-medium leading-relaxed max-w-2xl">
-                "เชื่อมโยงเป้าหมายองค์กร เข้ากับศักยภาพของบุคลากร เพื่อการเติบโตอย่างยั่งยืน" <br/><span className="text-[#b7a159] font-bold">SMART HR Management</span>
+                "ภาพรวมผลประกอบการ ทิศทางกลยุทธ์ และข้อมูลสำคัญสำหรับการตัดสินใจระดับบริหาร" <br/><span className="text-[#b7a159] font-bold">Enterprise Management System</span>
               </p>
             </div>
             <div className="flex flex-wrap gap-3 items-center">
               <button className="bg-[#b58c4f] hover:bg-[#8e9141] border border-[#b7a159]/30 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all flex items-center gap-2 shadow-lg hover:shadow-[0_0_15px_rgba(181,140,79,0.5)]">
-                <Building2 size={12} /> Org Chart
+                <Building2 size={12} /> Strategy Map
               </button>
               <div className="bg-white/5 border border-white/10 px-4 py-2 text-center rounded-xl flex items-center gap-2 shadow-inner backdrop-blur-md">
                 <ShieldCheck size={14} className="text-[#657f4d]" />
-                <span className="text-white font-black tracking-tighter text-sm">ISO 9001</span>
-                <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest leading-none mt-0.5">Compliant</span>
+                <span className="text-white font-black tracking-tighter text-sm">SECURE</span>
+                <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest leading-none mt-0.5">Exec Access</span>
               </div>
             </div>
           </div>
@@ -231,8 +233,8 @@ const HeroBanner = () => {
                    <div className="absolute inset-0 bg-[#b7a159]/20 blur-xl rounded-full scale-150 animate-pulse" />
                    <BrainCircuit size={40} className="text-[#b7a159] relative z-10 group-hover/ai:scale-110 transition-transform duration-500" />
                 </div>
-                <span className="text-[#b7a159] text-[13px] font-black uppercase tracking-[0.2em] mt-1">HR COPILOT</span>
-                <span className="text-[8px] text-white/40 font-bold tracking-[0.4em]">SMART ASSISTANT</span>
+                <span className="text-[#b7a159] text-[13px] font-black uppercase tracking-[0.2em] mt-1">CEO COPILOT</span>
+                <span className="text-[8px] text-white/40 font-bold tracking-[0.4em]">EXECUTIVE A.I.</span>
               </div>
             </a>
           </div>
@@ -762,32 +764,144 @@ const CorporateAlert = () => {
 };
 
 const CEODashboard = () => {
-  const barData = [
-    { name: 'COGS', value: 45, fill: '#9e2d26' },
-    { name: 'SG&A', value: 25, fill: '#c1451f' },
-    { name: 'R&D', value: 15, fill: '#d2963f' },
-    { name: 'TAX', value: 8, fill: '#738a96' },
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [expenseData, setExpenseData] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [revRes, expRes] = await Promise.all([
+          api.post('read', 'SaleRevenue', null, { limit: 2000, offset: 0 }),
+          api.post('read', 'CostExpense', null, { limit: 2000, offset: 0 })
+        ]);
+        if (revRes?.data?.items) setRevenueData(revRes.data.items);
+        else {
+          const c = localStorage.getItem('saleRevenueCache');
+          if (c) setRevenueData(JSON.parse(c));
+        }
+        if (expRes?.data?.items) setExpenseData(expRes.data.items);
+        else {
+          const c = localStorage.getItem('costExpenseCache');
+          if (c) setExpenseData(JSON.parse(c));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const metrics = useMemo(() => {
+    let totalRev = 0;
+    let totalCogs = 0;
+    let totalExp = 0;
+
+    revenueData.forEach(row => {
+      const val = parseFloat((row['มูลค่าขาย(บาท)'] || '0').toString().replace(/,/g, ''));
+      if (!isNaN(val)) totalRev += val;
+      
+      const qty = parseFloat((row['ยอดขาย (ชิ้น)'] || '0').toString().replace(/,/g, ''));
+      const cost = parseFloat((row['ราคาทุน'] || '0').toString().replace(/,/g, ''));
+      if (!isNaN(qty) && !isNaN(cost)) totalCogs += (qty * cost);
+    });
+
+    expenseData.forEach(row => {
+      const e = parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || '0').toString().replace(/,/g, ''));
+      if (!isNaN(e)) totalExp += e;
+    });
+
+    const totalMargin = totalRev - totalCogs;
+    const netProfit = totalMargin - totalExp;
+
+    // Monthly Grouping
+    const monthlyRev: Record<string, number> = {};
+    const monthlyExp: Record<string, number> = {};
+    
+    revenueData.forEach(row => {
+      const d = new Date(row['วันที่'] || row['Date'] || new Date());
+      if (isNaN(d.getTime())) return;
+      const key = d.toLocaleString('en-US', { month: 'short' });
+      monthlyRev[key] = (monthlyRev[key] || 0) + parseFloat((row['มูลค่าขาย(บาท)'] || '0').toString().replace(/,/g, '')) || 0;
+    });
+
+    expenseData.forEach(row => {
+      const d = new Date(row['mm/dd/yyyy'] || row['วันที่'] || new Date());
+      if (isNaN(d.getTime())) return;
+      const key = d.toLocaleString('en-US', { month: 'short' });
+      monthlyExp[key] = (monthlyExp[key] || 0) + parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || '0').toString().replace(/,/g, '')) || 0;
+    });
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const outputChart = months.filter(m => monthlyRev[m] || monthlyExp[m]).map(m => ({
+      name: m,
+      output: monthlyRev[m] || 0,
+      target: monthlyExp[m] || 0
+    }));
+
+    const barChart = [
+      { name: 'COGS', value: totalCogs, fill: '#9e2d26' },
+      { name: 'OPEX', value: totalExp, fill: '#c1451f' }
+    ];
+
+    const healthScore = totalRev > 0 ? Math.min(100, Math.max(0, (netProfit / totalRev) * 100)) : 0;
+    const gauge = [
+      { name: 'Score', value: Number(healthScore.toFixed(1)) },
+      { name: 'Remaining', value: Number((100 - healthScore).toFixed(1)) }
+    ];
+
+    return { totalRev, totalMargin, totalExp, netProfit, outputChart, barChart, gauge, healthScore };
+  }, [revenueData, expenseData]);
+
+  const outputData = metrics.outputChart.length ? metrics.outputChart : [
+    { name: 'Jan', output: 4200, target: 4000 },
+    { name: 'Feb', output: 4500, target: 4100 },
+    { name: 'Mar', output: 4800, target: 4400 },
   ];
 
-  const areaData = [
-    { name: '06/04', value: 1200 },
-    { name: '06/05', value: 1800 },
-    { name: '06/06', value: 1400 },
-    { name: '06/07', value: 2200 },
-    { name: '06/08', value: 2800 },
-    { name: '06/09', value: 2100 },
-    { name: '06/10', value: 3200 },
-  ];
-
-  const gaugeData = [
+  const gaugeData = metrics.totalRev > 0 ? metrics.gauge : [
     { name: 'Score', value: 99.4 },
     { name: 'Remaining', value: 0.6 }
   ];
 
+  const barData = metrics.totalRev > 0 ? metrics.barChart : [
+    { name: 'COGS', value: 45, fill: '#9e2d26' },
+    { name: 'OPEX', value: 25, fill: '#c1451f' }
+  ];
+
   return (
-    <div className="bg-[#f9fcfb] border border-[#e8eaec] rounded-2xl p-5 md:p-8 shadow-sm w-full mt-2 mb-2 font-mono">
+    <div className="w-full mt-2 mb-2 font-mono flex flex-col gap-6">
+      {/* Executive Summary Widget (Minimal) */}
+      <div className="mb-8 font-sans">
+        <h2 className="text-[13px] font-black text-[#2f3946] mb-4 uppercase tracking-[0.1em] flex items-center gap-2 font-mono">
+          <Briefcase size={16} className="text-[#b58c4f]" /> Executive Summary
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <KpiCard 
+            title="Total Sale Margin" 
+            value={`฿ ${(metrics.totalMargin / 1000000).toFixed(2)}M`} 
+            color="#657f4d" 
+            icon={TrendingUp} 
+            description="+8.2% vs Last Quarter" 
+          />
+          <KpiCard 
+            title="Total Expenses" 
+            value={`฿ ${(metrics.totalExp / 1000000).toFixed(2)}M`} 
+            color="#932c2e" 
+            icon={AlertCircle} 
+            description="+1.5% vs Budget" 
+          />
+          <KpiCard 
+            title="Net Profit (EBITDA)" 
+            value={`฿ ${(metrics.netProfit / 1000000).toFixed(2)}M`} 
+            color="#0ea5e9" 
+            icon={DollarSign} 
+            description="+12.4% vs Target" 
+          />
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between md:items-end pb-5 mb-5 gap-4">
+      <div className="flex flex-col md:flex-row justify-between md:items-end pb-1 mb-1 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <LayoutGrid size={24} className="text-[#d2963f]" />
@@ -838,7 +952,7 @@ const CEODashboard = () => {
              </ResponsiveContainer>
           </div>
           <div className="absolute top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full mt-2">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-[#192739] font-sans tracking-tight">99.4%</h2>
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[#192739] font-sans tracking-tight">{revenueData.length ? metrics.healthScore.toFixed(1) : '99.4'}%</h2>
             <p className="text-[10px] text-[#718698] font-bold uppercase mt-2 tracking-widest font-sans">BUSINESS HEALTH SCORE</p>
           </div>
         </div>
@@ -851,8 +965,12 @@ const CEODashboard = () => {
               <BarChart data={barData} margin={{ top: 25, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="none" vertical={false} stroke="#dce0e6" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={{ stroke: '#dce0e6' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={false} tickLine={false} tickCount={4} />
-                <RechartsTooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontFamily: 'monospace' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(val) => `${(val/1000000).toFixed(1)}M`} />
+                <RechartsTooltip 
+                  cursor={{ fill: 'transparent' }} 
+                  contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #eaeaec', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontFamily: 'monospace' }} 
+                  formatter={(val: number) => [`฿ ${(val/1000000).toFixed(2)} MB`, 'Value']}
+                />
                 <Bar dataKey="value" radius={[2, 2, 0, 0]} maxBarSize={32}>
                   {barData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -863,24 +981,22 @@ const CEODashboard = () => {
           </div>
         </div>
 
-        {/* Panel 3: Area Chart */}
+        {/* Panel 3: Line Chart */}
         <div className="bg-[#f5f7f9] rounded-xl p-5 border border-[#eceef2] flex flex-col items-center justify-center relative min-h-[220px]">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#2f3946] mb-2 text-center absolute top-5 w-full leading-tight">REVENUE VOLUME<br/>TREND (M)</h3>
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-[#2f3946] mb-2 text-center absolute top-5 w-full leading-tight">MONTHLY REVENUE<br/>VS TARGET</h3>
           <div className="mt-10 w-full h-[150px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={areaData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1e3f5a" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#1e3f5a" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="none" vertical={false} stroke="#dce0e6" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={{ stroke: '#dce0e6' }} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} tickFormatter={(val) => `${val/1000}k`} axisLine={false} tickLine={false} tickCount={4} />
-                <RechartsTooltip contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <Area type="monotone" dataKey="value" stroke="#1e3f5a" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" dot={{ stroke: '#1e3f5a', strokeWidth: 2, r: 4, fill: '#f5f7f9' }} activeDot={{ r: 6, fill: '#1e3f5a', stroke: '#fff', strokeWidth: 2 }} />
-              </AreaChart>
+              <LineChart data={outputData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#dce0e6" />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#718698', fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#718698', fontWeight: 'bold' }} axisLine={false} tickLine={false} tickCount={4} tickFormatter={(val) => `${(val/1000000).toFixed(1)}M`} />
+                <RechartsTooltip 
+                  contentStyle={{ borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #eaeaec', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                  formatter={(val: number) => [`฿ ${(val/1000000).toFixed(2)} MB`]}
+                />
+                <Line type="monotone" dataKey="output" name="Revenue" stroke="#1e3f5a" strokeWidth={3} dot={{ r: 3, fill: '#1e3f5a', stroke: 'white' }} activeDot={{ r: 5 }} />
+                <Line type="step" dataKey="target" name="Target (Expense)" stroke="#c1451f" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -1047,20 +1163,6 @@ export default function Home() {
 
       {/* CEO PORTAL BOARD */}
       <CEODashboard />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {MOCK_STATS.map((stat, idx) => (
-              <KpiCard 
-                  key={idx} 
-                  title={stat.label} 
-                  value={stat.value} 
-                  color={stat.color} 
-                  icon={stat.icon} 
-                  description={stat.sub}
-                  trendData={stat.trendData}
-              />
-          ))}
-      </div>
     </div>
   );
 }
