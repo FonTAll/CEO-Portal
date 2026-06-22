@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   LineChart, Line, ComposedChart, AreaChart, Area
 } from 'recharts';
 import { 
   TrendingUp, BarChart3, Activity, Layers, ArrowUpRight, 
-  Percent, DollarSign, BookOpen, Scale, Landmark
+  Percent, DollarSign, BookOpen, Scale, Landmark, RefreshCw
 } from 'lucide-react';
 
 // Color themes corresponding to CEO Portal
@@ -19,10 +20,7 @@ const CHARTS_THEME = {
   neutral: '#7a8b95'
 };
 
-const MONTH_LABELS = [
-  'Jan-2026', 'Feb-2026', 'Mar-2026', 'Apr-2026', 'May-2026', 'Jun-2026',
-  'Jul-2026', 'Aug-2026', 'Sep-2026', 'Oct-2026', 'Nov-2026', 'Dec-2026'
-];
+const MONTH_LABELS_MAPPING = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface CellData {
   sales: number;
@@ -88,17 +86,147 @@ const FALLBACK_FIXED_COSTS: Record<string, number> = {
 export default function MarginAnalysis() {
   const { t } = useLanguage();
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const MONTH_LABELS = useMemo(() => 
+    MONTH_LABELS_MAPPING.map(m => `${m}-${selectedYear}`), 
+  [selectedYear]);
 
   // Load live values synchronized with simulation page in real-time!
-  const categories: CategoryData[] = useMemo(() => {
+  const [categories, setCategories] = useState<CategoryData[]>(() => {
     const saved = localStorage.getItem('margin_categories_v1');
     return saved ? JSON.parse(saved) : FALLBACK_CATEGORIES;
-  }, []);
+  });
 
-  const fixedCosts: Record<string, number> = useMemo(() => {
+  const [fixedCosts, setFixedCosts] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('margin_fixed_costs_v1');
     return saved ? JSON.parse(saved) : FALLBACK_FIXED_COSTS;
-  }, []);
+  });
+
+  // Sync Data from SaleRevenue and CostExpense
+  const handleSyncData = async (isSilent = false) => {
+    try {
+      setIsSyncing(true);
+      const [salesRes, costRes] = await Promise.all([
+        api.post('read', 'SaleRevenue'),
+        api.post('read', 'CostExpense')
+      ]);
+
+      const salesData = salesRes?.data?.items || [];
+      const costData = costRes?.data?.items || [];
+
+      // Helper for Parsing Dates
+      const getParsedMonthYear = (rawDate: any) => {
+        let d: Date | null = null;
+        if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+          const serialDate = Number(rawDate);
+          if (serialDate > 20000) d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        }
+        if (!d) {
+          const dateStr = String(rawDate);
+          const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
+          if (matches) return `${matches[2]}-${matches[3]}`;
+          d = new Date(rawDate);
+        }
+        if (d && !isNaN(d.getTime())) {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return `${months[d.getMonth()]}-${d.getFullYear()}`;
+        }
+        return 'Unknown-2026';
+      };
+
+      // Create new Categories state based on FALLBACK_CATEGORIES struct
+      const newCategories: CategoryData[] = JSON.parse(JSON.stringify(FALLBACK_CATEGORIES));
+      newCategories.forEach(cat => {
+        Object.keys(cat.months).forEach(m => {
+          cat.months[m] = { sales: 0, pcs: 0, varCost: 0 };
+        });
+      });
+
+      const knownCostsTracker: Record<string, { qty: number, costSum: number }> = {}; 
+      
+      salesData.forEach((row: any) => {
+        const dateVal = row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
+        const mKey = getParsedMonthYear(dateVal);
+        const qty = parseFloat(String(row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || Object.values(row)[3] || 0).replace(/,/g, '')) || 0;
+        const price = parseFloat(String(row['ราคาขาย'] || row['ราคาขาย(บาท)'] || row['Price'] || Object.values(row)[4] || 0).replace(/,/g, '')) || 0;
+        const revenue = parseFloat(String(row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
+        const cost = parseFloat(String(row['ราคาทุน'] || row['Cost'] || '0').replace(/,/g, '')) || 0;
+        
+        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row['Category'] || Object.values(row)[1] || 'Others');
+        let targetCat = newCategories.find(c => c.category === category || c.categoryTh === category);
+        if (!targetCat) targetCat = newCategories.find(c => c.category === 'Others'); // fallback
+
+        if (targetCat) {
+          if (!targetCat.months[mKey]) targetCat.months[mKey] = { sales: 0, pcs: 0, varCost: 0 };
+          targetCat.months[mKey].sales += revenue;
+          targetCat.months[mKey].pcs += qty;
+          
+          if (cost > 0 && qty > 0) {
+            const trackKey = `${targetCat.category}_${mKey}`;
+            if (!knownCostsTracker[trackKey]) knownCostsTracker[trackKey] = { qty: 0, costSum: 0 };
+            knownCostsTracker[trackKey].qty += qty;
+            knownCostsTracker[trackKey].costSum += (cost * qty);
+          }
+        }
+      });
+
+      newCategories.forEach(cat => {
+        Object.keys(cat.months).forEach(m => {
+          const mData = cat.months[m];
+          const trackKey = `${cat.category}_${m}`;
+          const tracker = knownCostsTracker[trackKey];
+          
+          let avgCost = 0;
+          if (tracker && tracker.qty > 0) {
+            avgCost = tracker.costSum / tracker.qty;
+          }
+          mData.varCost = mData.pcs * avgCost;
+        });
+      });
+
+      const newFixedCosts: Record<string, number> = {};
+      MONTH_LABELS.forEach(m => {
+        newFixedCosts[m] = 0;
+      });
+
+      costData.forEach((row: any) => {
+        const dateVal = row['วันที่'] || row['Date'] || row['date'] || Object.values(row)[0] || '';
+        const mKey = getParsedMonthYear(dateVal);
+        const totalExpense = parseFloat(String(row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
+        
+        if (newFixedCosts[mKey] === undefined) newFixedCosts[mKey] = 0;
+        newFixedCosts[mKey] += totalExpense;
+      });
+
+      Object.keys(newFixedCosts).forEach(m => {
+        const sumVarCost = newCategories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
+        let actualFixCost = newFixedCosts[m] - sumVarCost;
+        if (actualFixCost < 0) actualFixCost = 0; 
+        newFixedCosts[m] = actualFixCost;
+      });
+
+      setCategories(newCategories);
+      setFixedCosts(newFixedCosts);
+      localStorage.setItem('margin_categories_v1', JSON.stringify(newCategories));
+      localStorage.setItem('margin_fixed_costs_v1', JSON.stringify(newFixedCosts));
+      if (!isSilent) {
+        alert(t('Synced data with Database', 'ดึงข้อมูลสำเร็จ!'));
+      }
+    } catch (e) {
+      console.error(e);
+      if (!isSilent) {
+        alert(t('Failed to sync. Make sure SaleRevenue & CostExpense have data.', 'ซิงค์ข้อมูลล้มเหลว โปรดตรวจสอบข้อมูลฐาน'));
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Automatically sync on page load / selectedYear change!
+  useEffect(() => {
+    handleSyncData(true);
+  }, [selectedYear]);
 
   // Compute calculated values per month corresponding to rules
   const calculatedMonthlyTotals = useMemo(() => {
@@ -146,7 +274,7 @@ export default function MarginAnalysis() {
     });
 
     return monthlyTotals;
-  }, [categories, fixedCosts]);
+  }, [categories, fixedCosts, MONTH_LABELS]);
 
   // Clean data structured specifically for Area / Bar Charts
   const chartData = useMemo(() => {
@@ -164,7 +292,7 @@ export default function MarginAnalysis() {
          pctNetMargin: parseFloat(data.pctNetMargin.toFixed(2))
       };
     }).filter(d => d.revenue > 0 || d.varCost > 0 || d.fixedCost > 0); // Hide months with no data for clean visual focus
-  }, [calculatedMonthlyTotals, t]);
+  }, [calculatedMonthlyTotals, t, MONTH_LABELS]);
 
   // Overall Cumulative Summaries
   const cumulativeStats = useMemo(() => {
@@ -227,15 +355,25 @@ export default function MarginAnalysis() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-white border border-[#eaeaec] rounded-xl px-2 py-1 shadow-sm h-9">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">{t('YEAR:', 'ปี:')}</span>
-            <select 
-              value={selectedYear} 
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="text-[11px] font-black text-[#212c46] outline-none bg-transparent cursor-pointer"
-            >
-              <option value="2026">2026</option>
-            </select>
+             <select 
+               value={selectedYear} 
+               onChange={(e) => setSelectedYear(e.target.value)}
+               className="text-[11px] font-black uppercase text-[#212c46] outline-none bg-transparent cursor-pointer"
+             >
+               <option value="2024">2024</option>
+               <option value="2025">2025</option>
+               <option value="2026">2026</option>
+               <option value="2027">2027</option>
+             </select>
           </div>
+          
+          <button 
+            onClick={() => handleSyncData(false)}
+            disabled={isSyncing}
+            className={`flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border ${isSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-400 opacity-70 cursor-not-allowed' : 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100 text-indigo-700'}`}
+          >
+             <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} /> {t('SYNC', 'ซิงค์ข้อมูล')}
+          </button>
         </div>
       </div>
 

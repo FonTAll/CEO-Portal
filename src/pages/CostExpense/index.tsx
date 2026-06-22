@@ -182,12 +182,12 @@ export default function CostExpense() {
       // Construct a standardized mapped row so that it maps correctly to the Google Sheet columns
       const mappedRow: any = {};
       mappedRow[mapping.dateCol] = dateVal;
-      mappedRow[mapping.headcountCol] = row['จน.พนักงาน'] || row['จำนวนพนักงาน'] || row['จำนวนพนักงาน (คน)'] || row['headcount'] || Object.values(row)[0] || '';
-      mappedRow[mapping.laborCol] = row['ค่าแรง (บาท)'] || row['ค่าจ้างแรงงานรวม'] || row['Labor Cost'] || Object.values(row)[1] || '';
-      mappedRow[mapping.waterCol] = row['ค่าน้ำประปา'] || row['ค่าน้ำ (บาท)'] || row['ค่าน้ำประปา (บาท)'] || row['Water Bill'] || Object.values(row)[2] || '';
-      mappedRow[mapping.electricCol] = row['ค่าไฟฟ้า'] || row['ค่าไฟฟ้า (บาท)'] || row['Electric Bill'] || Object.values(row)[3] || '';
-      mappedRow[mapping.gasCol] = row['ค่าแก๊ส/น้ำมัน'] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || row['Gas/Fuel Cost'] || Object.values(row)[4] || '';
-      mappedRow[mapping.totalCol] = row['TOTAL'] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['รวม'] || Object.values(row)[5] || '';
+      mappedRow[mapping.headcountCol] = row['จน.พนักงาน'] || row['จำนวนพนักงาน'] || row['จำนวนพนักงาน (คน)'] || row['headcount'] || Object.values(row)[1] || '';
+      mappedRow[mapping.laborCol] = row['ค่าแรง (บาท)'] || row['ค่าจ้างแรงงานรวม'] || row['Labor Cost'] || Object.values(row)[2] || '';
+      mappedRow[mapping.waterCol] = row['ค่าน้ำประปา'] || row['ค่าน้ำ (บาท)'] || row['ค่าน้ำประปา (บาท)'] || row['Water Bill'] || Object.values(row)[3] || '';
+      mappedRow[mapping.electricCol] = row['ค่าไฟฟ้า'] || row['ค่าไฟฟ้า (บาท)'] || row['Electric Bill'] || Object.values(row)[4] || '';
+      mappedRow[mapping.gasCol] = row['ค่าแก๊ส/น้ำมัน'] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || row['Gas/Fuel Cost'] || Object.values(row)[5] || '';
+      mappedRow[mapping.totalCol] = row['TOTAL'] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['รวม'] || Object.values(row)[6] || '';
 
       if (existingRowIndex !== -1) {
         // Date matches existing row, so overwrite it
@@ -255,16 +255,80 @@ export default function CostExpense() {
 
   const getParsedDate = (rawDate: any) => {
     if (!rawDate) return null;
+    if (rawDate instanceof Date) {
+      if (isNaN(rawDate.getTime())) return null;
+      let yr = rawDate.getFullYear();
+      if (yr > 2400) {
+        rawDate.setFullYear(yr - 543);
+      }
+      return rawDate;
+    }
+
     if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
         const serialDate = Number(rawDate);
-        return new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        const parsedDate = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        let yr = parsedDate.getFullYear();
+        if (yr > 2400) {
+          parsedDate.setFullYear(yr - 543);
+        }
+        return parsedDate;
     }
-    const strDate = String(rawDate);
-    const parts = strDate.split('/');
+
+    const strDate = String(rawDate).trim();
+    const parts = strDate.split(/[\/\-]/);
     if (parts.length === 3) {
-       return new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}T00:00:00`);
+       let year = 0;
+       let month = 0;
+       let day = 1;
+
+       const p0 = Number(parts[0]);
+       const p1 = Number(parts[1]);
+       const p2 = Number(parts[2]);
+
+       if (p0 > 1000) {
+         year = p0;
+         month = p1;
+         day = p2;
+       } else if (p2 > 1000) {
+         year = p2;
+         if (p0 > 12) {
+           day = p0;
+           month = p1;
+         } else if (p1 > 12) {
+           month = p0;
+           day = p1;
+         } else {
+           const isThaiOrStandardTH = mapping.dateCol.toLowerCase().includes('วัน') || mapping.dateCol.toLowerCase().includes('date') || !mapping.dateCol.toLowerCase().includes('mm/dd');
+           if (isThaiOrStandardTH) {
+             day = p0;
+             month = p1;
+           } else {
+             month = p0;
+             day = p1;
+           }
+         }
+       } else {
+         return new Date(strDate);
+       }
+
+       if (year > 2400) {
+         year -= 543;
+       }
+
+       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+         return new Date(year, month - 1, day);
+       }
     }
-    return new Date(strDate);
+
+    const d = new Date(strDate);
+    if (!isNaN(d.getTime())) {
+      let yr = d.getFullYear();
+      if (yr > 2400) {
+        d.setFullYear(yr - 543);
+      }
+      return d;
+    }
+    return null;
   };
 
     // Find date column based on known formats or fallback to first column

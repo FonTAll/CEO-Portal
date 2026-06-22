@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   DollarSign, 
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
+import { api } from '../../services/api';
 
 const THEME = {
   primary: '#212c46',
@@ -37,10 +38,7 @@ const THEME = {
   textSoftGreen: '#046c4e'
 };
 
-const MONTH_LABELS = [
-  'Jan-2026', 'Feb-2026', 'Mar-2026', 'Apr-2026', 'May-2026', 'Jun-2026',
-  'Jul-2026', 'Aug-2026', 'Sep-2026', 'Oct-2026', 'Nov-2026', 'Dec-2026'
-];
+const MONTH_LABELS_MAPPING = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface CellData {
   sales: number;
@@ -231,16 +229,16 @@ function MarginUserGuidePanel({ isOpen, onClose, t }: any) {
             </h4>
             <div className="space-y-3 font-normal text-[#414757] leading-relaxed">
               <p>
-                <strong>{t('Revenue / รายได้:', 'Revenue / รายได้:')}</strong> {t('Sum of all Category Sales.', 'ผลรวมของยอดขายแต่ละหมวดหมู่สินค้าในเดือนนั้นๆ')}
+                <strong>{t('Revenue / ยอดขาย:', 'Revenue / ยอดขาย:')}</strong> {t('Total sales for all products in the category.', 'ยอดขายรวมของทุกสินค้าย่อยในหมวดหมู่นั้นๆ ในกรอบเวลา 1 เดือน (ดึงจากเมนู Sale Revenue)')}
               </p>
               <p>
-                <strong>{t('Variable Cost / ต้นทุนแปรผัน:', 'Variable Cost / ต้นทุนแปรผัน:')}</strong> {t('Sum of Category Variable Costs + Fix Cost (matching historic spreadsheet math).', 'ผลรวมของต้นทุนแปรผันของทุกหมวดหมู่สินค้า + ต้นทุนคงที่เฉลี่ยเพื่อคำนวณ Margin ตรงกับสูตรดั้งเดิม')}
+                <strong>{t('Variable Cost / ต้นทุนแปรผันรายสินค้า:', 'Variable Cost / ต้นทุนแปรผันรายสินค้า:')}</strong> {t('Calculated via weighted average of known product costs.', 'คำนวณจาก (pcs. × avg. Cost/pcs.) โดย avg. Cost/pcs. มาจากการหาค่าเฉลี่ยแบบถ่วงน้ำหนัก (Weighted Average) ของต้นทุนสินค้าย่อยที่มีข้อมูลในกลุ่มนั้น')}
               </p>
               <p>
-                <strong>{t('Fix Cost / ต้นทุนคงที่:', 'Fix Cost / ต้นทุนคงที่:')}</strong> {t('Assigned monthly constant operational overheads.', 'ต้นทุนคงที่สำหรับประเมินการเบี่ยงเบนประสิทธิภาพตามงวดบัญชี')}
+                <strong>{t('Fix Cost / ค่าใช้จ่ายปฏิบัติการ (คงที่):', 'Fix Cost / ค่าใช้จ่ายปฏิบัติการ (คงที่):')}</strong> {t('Total factory expense derived from Cost menu minus total variable costs.', 'ค่าใช้จ่ายรวมทั้งโรงงาน (ดึงจากเมนู Cost & Expense) นำมาหักลบด้วย Variable Cost รวมทั้งหมดในเดือนนั้น')}
               </p>
               <p>
-                <strong>{t('Margin / กำไรขั้นต้น:', 'Margin / กำไรขั้นต้น:')}</strong> {t('Revenue - Variable Cost - Fix Cost.', 'ส่วนการคำนวณกำไรสะสมสุทธิหลังหักต้นทุนรวมทุกประเภท')}
+                <strong>{t('Margin / กำไรขั้นต้นสุทธิ:', 'Margin / กำไรสุทธิ:')}</strong> {t('Revenue - Variable Cost - Fix Cost.', 'คำนวณจาก (Revenue รวม) - (Variable Cost รวม) - (Fix Cost)')}
               </p>
             </div>
           </section>
@@ -272,6 +270,11 @@ function MarginUserGuidePanel({ isOpen, onClose, t }: any) {
 
 export default function Margin() {
   const { t } = useLanguage();
+  const [selectedYear, setSelectedYear] = useState('2026');
+  
+  const MONTH_LABELS = useMemo(() => 
+    MONTH_LABELS_MAPPING.map(m => `${m}-${selectedYear}`), 
+  [selectedYear]);
   
   // State for operational category records
   const [categories, setCategories] = useState<CategoryData[]>(() => {
@@ -285,8 +288,137 @@ export default function Margin() {
     return saved ? JSON.parse(saved) : INITIAL_FIXED_COSTS;
   });
 
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const isEditMode = false; // EDIT MODE is strictly disabled per request
+
+  // Sync Data from SaleRevenue and CostExpense
+  const handleSyncBaseData = async (isSilent = false) => {
+    try {
+      setIsSyncing(true);
+      const [salesRes, costRes] = await Promise.all([
+        api.post('read', 'SaleRevenue'),
+        api.post('read', 'CostExpense')
+      ]);
+
+      const salesData = salesRes?.data?.items || [];
+      const costData = costRes?.data?.items || [];
+
+      // Helper for Parsing Dates
+      const getParsedMonthYear = (rawDate: any) => {
+        let d: Date | null = null;
+        if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+          const serialDate = Number(rawDate);
+          if (serialDate > 20000) d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        }
+        if (!d) {
+          const dateStr = String(rawDate);
+          const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
+          if (matches) return `${matches[2]}-${matches[3]}`;
+          d = new Date(rawDate);
+        }
+        if (d && !isNaN(d.getTime())) {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return `${months[d.getMonth()]}-${d.getFullYear()}`;
+        }
+        return 'Unknown-2026';
+      };
+
+      // Create new Categories state based on INITIAL_CATEGORIES struct
+      const newCategories: CategoryData[] = JSON.parse(JSON.stringify(INITIAL_CATEGORIES));
+      // Reset all months to 0 to safely accumulate newly synced data
+      newCategories.forEach(cat => {
+        Object.keys(cat.months).forEach(m => {
+          cat.months[m] = { sales: 0, pcs: 0, varCost: 0 };
+        });
+      });
+
+      // 1. Process SaleRevenue per Category, per Month
+      const knownCostsTracker: Record<string, { qty: number, costSum: number }> = {}; 
+      // track known costs per category/monthkey
+      salesData.forEach((row: any) => {
+        const dateVal = row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
+        const mKey = getParsedMonthYear(dateVal);
+        const qty = parseFloat(String(row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || Object.values(row)[3] || 0).replace(/,/g, '')) || 0;
+        const price = parseFloat(String(row['ราคาขาย'] || row['ราคาขาย(บาท)'] || row['Price'] || Object.values(row)[4] || 0).replace(/,/g, '')) || 0;
+        const revenue = parseFloat(String(row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
+        const cost = parseFloat(String(row['ราคาทุน'] || row['Cost'] || '0').replace(/,/g, '')) || 0;
+        
+        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row['Category'] || Object.values(row)[1] || 'Others');
+        // Map common Th names back to tracking category if it deviates slightly, or just find it. We'll find by categoryTh or name
+        let targetCat = newCategories.find(c => c.category === category || c.categoryTh === category);
+        if (!targetCat) targetCat = newCategories.find(c => c.category === 'Others'); // fallback
+
+        if (targetCat) {
+          if (!targetCat.months[mKey]) targetCat.months[mKey] = { sales: 0, pcs: 0, varCost: 0 };
+          targetCat.months[mKey].sales += revenue;
+          targetCat.months[mKey].pcs += qty;
+          
+          if (cost > 0 && qty > 0) {
+            const trackKey = `${targetCat.category}_${mKey}`;
+            if (!knownCostsTracker[trackKey]) knownCostsTracker[trackKey] = { qty: 0, costSum: 0 };
+            knownCostsTracker[trackKey].qty += qty;
+            knownCostsTracker[trackKey].costSum += (cost * qty);
+          }
+        }
+      });
+
+      // Calc Variable Cost (varCost)
+      newCategories.forEach(cat => {
+        Object.keys(cat.months).forEach(m => {
+          const mData = cat.months[m];
+          const trackKey = `${cat.category}_${m}`;
+          const tracker = knownCostsTracker[trackKey];
+          
+          let avgCost = 0;
+          if (tracker && tracker.qty > 0) {
+            avgCost = tracker.costSum / tracker.qty;
+          }
+          mData.varCost = mData.pcs * avgCost;
+        });
+      });
+
+      // 2. Process CostExpense to get Fix Costs - Reset to 0 so we only count database rows, not old hardcoded ones
+      const newFixedCosts: Record<string, number> = {};
+      MONTH_LABELS.forEach(m => {
+        newFixedCosts[m] = 0;
+      });
+
+      costData.forEach((row: any) => {
+        const dateVal = row['วันที่'] || row['Date'] || row['date'] || Object.values(row)[0] || '';
+        const mKey = getParsedMonthYear(dateVal);
+        const totalExpense = parseFloat(String(row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
+        
+        if (newFixedCosts[mKey] === undefined) newFixedCosts[mKey] = 0;
+        newFixedCosts[mKey] += totalExpense;
+      });
+
+      // Fix Cost = (Total Factory Cost) - (Total calculated Variable Cost for all categories in that month)
+      Object.keys(newFixedCosts).forEach(m => {
+        const sumVarCost = newCategories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
+        let actualFixCost = newFixedCosts[m] - sumVarCost;
+        if (actualFixCost < 0) actualFixCost = 0; // Prevent negative fixed cost if variable exceeds? Typically factory cost > variable
+        newFixedCosts[m] = actualFixCost;
+      });
+
+      handleSaveData(newCategories, newFixedCosts);
+      if (!isSilent) {
+        alert(t('Synced data with Database', 'ดึงข้อมูลสำเร็จ!'));
+      }
+    } catch (e) {
+      console.error(e);
+      if (!isSilent) {
+        alert(t('Failed to sync. Make sure SaleRevenue & CostExpense have data.', 'ซิงค์ข้อมูลล้มเหลว โปรดตรวจสอบข้อมูลฐาน'));
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Automatically sync on page load / selectedYear change!
+  useEffect(() => {
+    handleSyncBaseData(true);
+  }, [selectedYear]);
 
   // Helper function to update state and save to local storage
   const handleSaveData = (updatedCats: CategoryData[], updatedFix: Record<string, number>) => {
@@ -294,13 +426,6 @@ export default function Margin() {
     setFixedCosts(updatedFix);
     localStorage.setItem('margin_categories_v1', JSON.stringify(updatedCats));
     localStorage.setItem('margin_fixed_costs_v1', JSON.stringify(updatedFix));
-  };
-
-  // Reset to seed data
-  const handleResetToSeed = () => {
-    if (window.confirm(t('Are you sure you want to restore default spreadsheet records?', 'คุณแน่ใจหรือไม่ว่าต้องการคืนค่าและรีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้นตามไฟล์ระบบ?'))) {
-      handleSaveData(INITIAL_CATEGORIES, INITIAL_FIXED_COSTS);
-    }
   };
 
   // Export to CSV
@@ -334,8 +459,7 @@ export default function Margin() {
         const rev = categories.reduce((acc, cat) => acc + (cat.months[m]?.sales || 0), 0);
         const sumVarProd = categories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
         const totalVC = sumVarProd + (fixedCosts[m] || 0);
-        const fix = fixedCosts[m] || 0;
-        const marg = rev - totalVC - fix;
+        const marg = rev - totalVC;
         return (marg / 1000000).toFixed(4) + " MB";
       }).join(",") + "\n";
 
@@ -380,11 +504,11 @@ export default function Margin() {
       // 3. Fix Cost Row
       const fix = fixedCosts[m] || 0;
 
-      // 4. Summary Variable Cost = Product Variable Cost Sum + Fix Cost (as discovered from spreadsheet math)
+      // 4. Summary Variable Cost (Actually just product variable cost + fixed cost to represent total Cost)
       const totalVarCost = prodVarCost + fix;
 
-      // 5. Margin = Revenue - Summary Variable Cost - Fix Cost
-      const marginVal = rev - totalVarCost - fix;
+      // 5. Margin = Revenue - Total Cost (which is prodVarCost + fix)
+      const marginVal = rev - totalVarCost;
 
       // 6. %Margin = (Margin / Revenue) * 100
       const pctMarginVal = rev > 0 ? (marginVal / rev) * 100 : 0;
@@ -400,7 +524,7 @@ export default function Margin() {
     });
 
     return totals;
-  }, [categories, fixedCosts]);
+  }, [categories, fixedCosts, MONTH_LABELS]);
 
   // Overall KPIs for quick visualization (Sum of active months)
   const statsKPI = useMemo(() => {
@@ -426,37 +550,13 @@ export default function Margin() {
       margin: totalMarginVal,
       pctMargin: averagePctMargin
     };
-  }, [calculatedMonthlyTotals]);
+  }, [calculatedMonthlyTotals, MONTH_LABELS]);
 
   // Format utility
   const formatMB = (val: number) => {
     const mbValue = val / 1000000;
     // Format to 4 decimal places as shown in the screenshot
     return mbValue.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' MB';
-  };
-
-  const handleCellChange = (
-    catIdx: number, 
-    month: string, 
-    field: keyof CellData, 
-    rawVal: string
-  ) => {
-    const cleanNum = parseFloat(rawVal.replace(/,/g, '')) || 0;
-    const updatedCats = JSON.parse(JSON.stringify(categories));
-    
-    // Safety check
-    if (!updatedCats[catIdx].months[month]) {
-      updatedCats[catIdx].months[month] = { sales: 0, pcs: 0, varCost: 0 };
-    }
-    
-    updatedCats[catIdx].months[month][field] = cleanNum;
-    handleSaveData(updatedCats, fixedCosts);
-  };
-
-  const handleFixCostChange = (month: string, rawVal: string) => {
-    const cleanNum = parseFloat(rawVal.replace(/,/g, '')) || 0;
-    const updatedFix = { ...fixedCosts, [month]: cleanNum };
-    handleSaveData(categories, updatedFix);
   };
 
   return (
@@ -495,29 +595,26 @@ export default function Margin() {
 
         {/* Action Toolbar */}
         <div id="margin-action-toolbar" className="flex items-center gap-2.5 bg-white/50 p-1.5 rounded-xl border border-white/60 shadow-inner">
+          <div className="flex items-center bg-white border border-[#eaeaec] rounded-lg px-2 h-9 shadow-sm">
+             <Calendar size={14} className="text-[#3f809e] mr-2" />
+             <select 
+               value={selectedYear}
+               onChange={(e) => setSelectedYear(e.target.value)}
+               className="bg-transparent text-[12px] font-black uppercase text-[#212c46] focus:outline-none cursor-pointer"
+             >
+               <option value="2024">2024</option>
+               <option value="2025">2025</option>
+               <option value="2026">2026</option>
+               <option value="2027">2027</option>
+             </select>
+          </div>
+          
           <button 
-            id="margin-toggle-edit-btn"
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all shadow-sm ${isEditMode ? 'bg-[#657f4d] hover:bg-[#52683e] text-white' : 'bg-white border border-[#eaeaec] hover:border-[#b58c4f] text-[#212c46]'}`}
+            onClick={() => handleSyncBaseData(false)}
+            disabled={isSyncing}
+            className={`flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border ${isSyncing ? 'bg-indigo-50 border-indigo-200 text-indigo-400 opacity-70 cursor-not-allowed' : 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100 text-indigo-700'}`}
           >
-            {isEditMode ? (
-              <>
-                <Check size={14} strokeWidth={3} className="animate-bounce" /> {t('LOCK & SAVE', 'บันทึกการซ่อม')}
-              </>
-            ) : (
-              <>
-                <Edit size={14} /> {t('EDIT MODE', 'โหมดทดลองตัวเลข')}
-              </>
-            )}
-          </button>
-
-          <button 
-            id="margin-reset-seed-btn"
-            onClick={handleResetToSeed}
-            className="flex items-center justify-center w-9 h-9 bg-white border border-[#eaeaec] hover:border-[#932c2e] hover:text-[#932c2e] rounded-lg transition-all shadow-sm group"
-            title={t('Reset to default values', 'รีเซ็ตข้อมูลเริ่มแรก')}
-          >
-            <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-slate-500 group-hover:text-[#932c2e]" />
+             <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} /> {t('SYNC', 'ซิงค์ข้อมูล')}
           </button>
 
           <button 
@@ -669,18 +766,7 @@ export default function Margin() {
                     const val = calculatedMonthlyTotals[m].fixCost;
                     return (
                       <td key={'fc-' + m} className="px-3 py-1 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#932c2e]">
-                        {isEditMode ? (
-                          <input 
-                            id={`input-fc-${m}`}
-                            type="text"
-                            value={val === 0 ? '' : val.toLocaleString()}
-                            placeholder="0"
-                            onChange={(e) => handleFixCostChange(m, e.target.value)}
-                            className="bg-amber-50/50 border border-amber-200 focus:bg-white focus:border-amber-400 focus:outline-none w-full text-right px-2 py-0.5 rounded text-[12px] font-black text-[#212c46] h-7"
-                          />
-                        ) : (
-                          val > 0 ? formatMB(val) : '-'
-                        )}
+                        {val > 0 ? formatMB(val) : '-'}
                       </td>
                     );
                   })}
@@ -748,48 +834,26 @@ export default function Margin() {
                           const val = cat.months[m]?.sales || 0;
                           return (
                             <td key={'sales-' + catIdx + m} className="px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-slate-800">
-                              {isEditMode ? (
-                                <input 
-                                  id={`input-sales-${catIdx}-${m}`}
-                                  type="text"
-                                  value={val === 0 ? '' : val.toLocaleString()}
-                                  placeholder="0"
-                                  onChange={(e) => handleCellChange(catIdx, m, 'sales', e.target.value)}
-                                  className="border border-[#eaeaec] hover:border-slate-300 focus:border-slate-500 focus:outline-none w-full text-right px-1.5 py-0.5 rounded text-[12px] font-bold text-[#212c46] h-7"
-                                />
-                              ) : (
-                                val > 0 ? val.toLocaleString() : '-'
-                              )}
+                              {val > 0 ? val.toLocaleString() : '-'}
                             </td>
                           );
                         })}
                       </tr>
 
-                      {/* Row 2: pcs. (quantity in pieces) */}
-                      <tr className="bg-white/80 text-slate-500 hover:bg-slate-50/40 border-b border-[#eaeaec]/40">
-                        <td className="px-4 py-1.5 text-[12px] font-medium text-right text-teal-600 border-r border-[#eaeaec] pr-4 bg-slate-50/50">
-                          {t('pcs.', 'pcs.')}
-                        </td>
-                        {MONTH_LABELS.map(m => {
-                          const val = cat.months[m]?.pcs || 0;
-                          return (
-                            <td key={'pcs-' + catIdx + m} className="px-3 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec]/30 font-mono text-[#4d87a8]">
-                              {isEditMode ? (
-                                <input 
-                                  id={`input-pcs-${catIdx}-${m}`}
-                                  type="text"
-                                  value={val === 0 ? '' : val.toLocaleString()}
-                                  placeholder="0"
-                                  onChange={(e) => handleCellChange(catIdx, m, 'pcs', e.target.value)}
-                                  className="border border-[#eaeaec] hover:border-slate-300 focus:border-slate-500 focus:outline-none w-full text-right px-1.5 py-0.5 rounded text-[12px] font-bold text-[#212c46] h-7"
-                                />
-                              ) : (
-                                val > 0 ? val.toLocaleString() : '-'
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
+                        {/* Row 2: pcs. (quantity in pieces) */}
+                        <tr className="bg-white/80 text-slate-500 hover:bg-slate-50/40 border-b border-[#eaeaec]/40">
+                          <td className="px-4 py-1.5 text-[12px] font-medium text-right text-teal-600 border-r border-[#eaeaec] pr-4 bg-slate-50/50">
+                            {t('pcs.', 'pcs.')}
+                          </td>
+                          {MONTH_LABELS.map(m => {
+                            const val = cat.months[m]?.pcs || 0;
+                            return (
+                              <td key={'pcs-' + catIdx + m} className="px-3 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec]/30 font-mono text-[#4d87a8]">
+                                {val > 0 ? val.toLocaleString() : '-'}
+                              </td>
+                            );
+                          })}
+                        </tr>
 
                       {/* Row 3: avg. Price/pcs. */}
                       <tr className="bg-white/50 text-slate-500 hover:bg-slate-50/40 border-b border-[#eaeaec]/40">
@@ -833,18 +897,7 @@ export default function Margin() {
                           const val = cat.months[m]?.varCost || 0;
                           return (
                             <td key={'vccost-' + catIdx + m} className="px-3 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec]/35 font-mono text-[#c81e1e]">
-                              {isEditMode ? (
-                                <input 
-                                  id={`input-varCost-${catIdx}-${m}`}
-                                  type="text"
-                                  value={val === 0 ? '' : val.toLocaleString()}
-                                  placeholder="0.00"
-                                  onChange={(e) => handleCellChange(catIdx, m, 'varCost', e.target.value)}
-                                  className="border border-[#f8b4b4] hover:border-red-300 focus:border-red-500 focus:outline-none w-full text-right px-1.5 py-0.5 rounded text-[12px] font-bold text-[#c81e1e] bg-red-50/55 h-7"
-                                />
-                              ) : (
-                                val > 0 ? val.toLocaleString() : '0'
-                              )}
+                              {val > 0 ? val.toLocaleString() : '0'}
                             </td>
                           );
                         })}

@@ -247,23 +247,24 @@ export default function SaleAnalysis() {
         {/* Global Toolbar */}
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-white border border-[#eaeaec] rounded-xl px-2 py-1 shadow-sm h-9">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2">{t('YEAR:', 'ปี:')}</span>
-            <select 
-              value={selectedYear} 
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="text-[11px] font-black text-[#212c46] outline-none bg-transparent cursor-pointer"
-            >
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-            </select>
+             <select 
+               value={selectedYear} 
+               onChange={(e) => setSelectedYear(e.target.value)}
+               className="text-[11px] font-black uppercase text-[#212c46] outline-none bg-transparent cursor-pointer"
+             >
+               <option value="2024">2024</option>
+               <option value="2025">2025</option>
+               <option value="2026">2026</option>
+               <option value="2027">2027</option>
+             </select>
           </div>
 
           <button 
             onClick={handleRefresh}
-            className="flex items-center justify-center w-9 h-9 bg-white border border-[#eaeaec] hover:border-[#b58c4f] rounded-xl transition-all shadow-sm active:scale-95"
-            title={t('Refresh Data', 'โหลดซิงค์ข้อมูล')}
+            disabled={isLoading}
+            className={`flex items-center gap-2 h-9 px-4 rounded-lg text-[11px] font-black uppercase tracking-widest shadow-sm transition-all border ${isLoading ? 'bg-indigo-50 border-indigo-200 text-indigo-400 opacity-70 cursor-not-allowed' : 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100 text-indigo-700'}`}
           >
-            <RefreshCw size={14} className={`${isLoading ? 'animate-spin text-[#b58c4f]' : 'text-[#212c46]'}`} />
+             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> {t('SYNC', 'ซิงค์ข้อมูล')}
           </button>
         </div>
       </div>

@@ -633,41 +633,23 @@ export default function SaleRevenue() {
 
     uploadedData.forEach((row, index) => {
       const dateVal = row[mapping.dateCol] || row['Date'] || row['วันที่'] || '';
-      const trimDateVal = String(dateVal).trim();
-
-      // Find if a row with the same date already exists in the existing database rows
-      const existingRowIndex = updatedDataList.findIndex(existingRow => {
-        const existingDateVal = String(existingRow[mapping.dateCol] || existingRow['Date'] || existingRow['วันที่'] || '').trim();
-        return existingDateVal !== '' && existingDateVal === trimDateVal;
-      });
-
+      
       const mappedRow = { ...row };
       if (dateVal) {
         mappedRow[mapping.dateCol] = dateVal;
       }
 
-      if (existingRowIndex !== -1) {
-        // Date matches existing row, so overwrite it
-        const existingRow = updatedDataList[existingRowIndex];
-        const updatedRow = {
-          ...mappedRow,
-          id: existingRow.id,
-          createdAt: existingRow.createdAt || timestamp,
-          updatedAt: timestamp
-        };
-        rowsToUpdate.push(updatedRow);
-        updatedDataList[existingRowIndex] = updatedRow; // Update in-place locally
-      } else {
-        // Date not found, so create a new record
-        const newRow = {
-          ...mappedRow,
-          id: row.id ? String(row.id) : `SR-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
-          createdAt: row.createdAt || timestamp,
-          updatedAt: timestamp
-        };
-        rowsToWrite.push(newRow);
-        updatedDataList.push(newRow); // Append to local state list
-      }
+      // Note: We DO NOT deduplicate by date for Sale Revenue, because there are multiple sales per date.
+      // We assume it's a batch append.
+
+      const newRow = {
+        ...mappedRow,
+        id: row.id ? String(row.id) : `SR-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+        createdAt: row.createdAt || timestamp,
+        updatedAt: timestamp
+      };
+      rowsToWrite.push(newRow);
+      updatedDataList.push(newRow); // Append to local state list
     });
 
     const previousData = data;
@@ -711,16 +693,80 @@ export default function SaleRevenue() {
 
   const getParsedDate = (rawDate: any) => {
     if (!rawDate) return null;
+    if (rawDate instanceof Date) {
+      if (isNaN(rawDate.getTime())) return null;
+      let yr = rawDate.getFullYear();
+      if (yr > 2400) {
+        rawDate.setFullYear(yr - 543);
+      }
+      return rawDate;
+    }
+
     if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
         const serialDate = Number(rawDate);
-        return new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        const parsedDate = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        let yr = parsedDate.getFullYear();
+        if (yr > 2400) {
+          parsedDate.setFullYear(yr - 543);
+        }
+        return parsedDate;
     }
-    const strDate = String(rawDate);
-    const parts = strDate.split('/');
+
+    const strDate = String(rawDate).trim();
+    const parts = strDate.split(/[\/\-]/);
     if (parts.length === 3) {
-       return new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}T00:00:00`);
+       let year = 0;
+       let month = 0;
+       let day = 1;
+
+       const p0 = Number(parts[0]);
+       const p1 = Number(parts[1]);
+       const p2 = Number(parts[2]);
+
+       if (p0 > 1000) {
+         year = p0;
+         month = p1;
+         day = p2;
+       } else if (p2 > 1000) {
+         year = p2;
+         if (p0 > 12) {
+           day = p0;
+           month = p1;
+         } else if (p1 > 12) {
+           month = p0;
+           day = p1;
+         } else {
+           const isThaiOrStandardTH = mapping.dateCol.toLowerCase().includes('วัน') || mapping.dateCol.toLowerCase().includes('date') || !mapping.dateCol.toLowerCase().includes('mm/dd');
+           if (isThaiOrStandardTH) {
+             day = p0;
+             month = p1;
+           } else {
+             month = p0;
+             day = p1;
+           }
+         }
+       } else {
+         return new Date(strDate);
+       }
+
+       if (year > 2400) {
+         year -= 543;
+       }
+
+       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+         return new Date(year, month - 1, day);
+       }
     }
-    return new Date(strDate);
+
+    const d = new Date(strDate);
+    if (!isNaN(d.getTime())) {
+      let yr = d.getFullYear();
+      if (yr > 2400) {
+        d.setFullYear(yr - 543);
+      }
+      return d;
+    }
+    return null;
   };
 
   const filteredData = React.useMemo(() => {
