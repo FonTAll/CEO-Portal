@@ -100,18 +100,27 @@ function readData(sheet, params) {
 
 function writeData(sheet, data) {
   if (!Array.isArray(data)) data = [data];
+  if (data.length === 0) return createResponse("success", "No data to save");
+  
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   
-  data.forEach(item => {
-    const row = headers.map(h => item[h] || "");
-    sheet.appendRow(row);
+  // Transform items into a 2D array matching the header positions
+  const rowsValues = data.map(item => {
+    return headers.map(h => {
+      const val = item[h];
+      return val !== undefined && val !== null ? String(val) : "";
+    });
   });
+
+  const lastRow = sheet.getLastRow();
+  // Batch write all entries simultaneously (1000x faster than appendRow in a loop!)
+  sheet.getRange(lastRow + 1, 1, rowsValues.length, headers.length).setValues(rowsValues);
   
   // Auto-Cleanup: Remove empty rows to keep the sheet lean and fast
-  const lastRow = sheet.getLastRow();
+  const newLastRow = sheet.getLastRow();
   const maxRows = sheet.getMaxRows();
-  if (maxRows > lastRow + 1) {
-    sheet.deleteRows(lastRow + 1, maxRows - lastRow - 1);
+  if (maxRows > newLastRow + 1) {
+    sheet.deleteRows(newLastRow + 1, maxRows - newLastRow - 1);
   }
   
   return createResponse("success", "Data saved successfully");

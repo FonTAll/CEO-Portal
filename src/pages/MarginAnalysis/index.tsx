@@ -71,6 +71,96 @@ const FALLBACK_CATEGORIES: CategoryData[] = [
       'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
       'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
     }
+  },
+  {
+    category: 'Folding Table',
+    categoryTh: 'โต๊ะพับ',
+    months: {
+      'Jan-2026': { sales: 2351658, pcs: 12900, varCost: 0 },
+      'Feb-2026': { sales: 2286388, pcs: 7811, varCost: 0 },
+      'Mar-2026': { sales: 2636388, pcs: 9529, varCost: 0 },
+      'Apr-2026': { sales: 1860169, pcs: 15436, varCost: 0 },
+      'May-2026': { sales: 1752081, pcs: 5128, varCost: 0 },
+      'Jun-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Jul-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Aug-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Sep-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Oct-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
+    }
+  },
+  {
+    category: 'Chair',
+    categoryTh: 'เก้าอี้',
+    months: {
+      'Jan-2026': { sales: 1069135, pcs: 6366, varCost: 0 },
+      'Feb-2026': { sales: 901450, pcs: 5740, varCost: 0 },
+      'Mar-2026': { sales: 989000, pcs: 6012, varCost: 0 },
+      'Apr-2026': { sales: 775510, pcs: 4826, varCost: 0 },
+      'May-2026': { sales: 1012288, pcs: 6272, varCost: 0 },
+      'Jun-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Jul-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Aug-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Sep-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Oct-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
+    }
+  },
+  {
+    category: 'Hammock',
+    categoryTh: 'เปล',
+    months: {
+      'Jan-2026': { sales: 499630, pcs: 1098, varCost: 0 },
+      'Feb-2026': { sales: 323680, pcs: 806, varCost: 0 },
+      'Mar-2026': { sales: 565180, pcs: 1332, varCost: 0 },
+      'Apr-2026': { sales: 305520, pcs: 745, varCost: 0 },
+      'May-2026': { sales: 265419, pcs: 664, varCost: 0 },
+      'Jun-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Jul-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Aug-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Sep-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Oct-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
+    }
+  },
+  {
+    category: 'Water Bar Shelf',
+    categoryTh: 'ชั้นบาร์น้ำ',
+    months: {
+      'Jan-2026': { sales: 138730, pcs: 637, varCost: 0 },
+      'Feb-2026': { sales: 112510, pcs: 527, varCost: 0 },
+      'Mar-2026': { sales: 87020, pcs: 410, varCost: 0 },
+      'Apr-2026': { sales: 73770, pcs: 338, varCost: 0 },
+      'May-2026': { sales: 58085, pcs: 266, varCost: 0 },
+      'Jun-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Jul-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Aug-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Sep-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Oct-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
+    }
+  },
+  {
+    category: 'Others',
+    categoryTh: 'อื่นๆ',
+    months: {
+      'Jan-2026': { sales: 371461, pcs: 4267, varCost: 0 },
+      'Feb-2026': { sales: 930893, pcs: 17112, varCost: 0 },
+      'Mar-2026': { sales: 912339, pcs: 36200, varCost: 0 },
+      'Apr-2026': { sales: 372960, pcs: 19164, varCost: 0 },
+      'May-2026': { sales: 430857, pcs: 23322, varCost: 0 },
+      'Jun-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Jul-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Aug-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Sep-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Oct-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Nov-2026': { sales: 0, pcs: 0, varCost: 0 },
+      'Dec-2026': { sales: 0, pcs: 0, varCost: 0 },
+    }
   }
 ];
 
@@ -117,20 +207,70 @@ export default function MarginAnalysis() {
 
       // Helper for Parsing Dates
       const getParsedMonthYear = (rawDate: any) => {
+        if (!rawDate) return 'Unknown-2026';
         let d: Date | null = null;
-        if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+        if (rawDate instanceof Date) {
+          if (!isNaN(rawDate.getTime())) {
+            d = rawDate;
+          }
+        } else if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
           const serialDate = Number(rawDate);
-          if (serialDate > 20000) d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+          if (serialDate > 20000) {
+            d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+          }
         }
+
         if (!d) {
-          const dateStr = String(rawDate);
-          const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
-          if (matches) return `${matches[2]}-${matches[3]}`;
-          d = new Date(rawDate);
+          const strDate = String(rawDate).trim();
+          const parts = strDate.split(/[\/\-]/);
+          if (parts.length === 3) {
+             let year = 0;
+             let month = 0;
+             let day = 1;
+
+             const p0 = Number(parts[0]);
+             const p1 = Number(parts[1]);
+             const p2 = Number(parts[2]);
+
+             if (p0 > 1000) {
+               year = p0;
+               month = p1;
+               day = p2;
+             } else if (p2 > 1000) {
+               year = p2;
+               if (p0 > 12) {
+                 day = p0;
+                 month = p1;
+               } else if (p1 > 12) {
+                 month = p0;
+                 day = p1;
+               } else {
+                 day = p0;
+                 month = p1;
+               }
+             } else {
+               d = new Date(strDate);
+             }
+
+             if (year > 2400) {
+               year -= 543;
+             }
+
+             if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+               d = new Date(year, month - 1, day);
+             }
+          } else {
+            d = new Date(strDate);
+          }
         }
+
         if (d && !isNaN(d.getTime())) {
+          let yr = d.getFullYear();
+          if (yr > 2400) {
+            yr -= 543;
+          }
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          return `${months[d.getMonth()]}-${d.getFullYear()}`;
+          return `${months[d.getMonth()]}-${yr}`;
         }
         return 'Unknown-2026';
       };
@@ -279,7 +419,7 @@ export default function MarginAnalysis() {
   // Clean data structured specifically for Area / Bar Charts
   const chartData = useMemo(() => {
     return MONTH_LABELS.map(m => {
-      const data = calculatedMonthlyTotals[m];
+      const data = calculatedMonthlyTotals[m] || { revenue: 0, varCost: 0, fixedCost: 0, grossMargin: 0, netMargin: 0, pctMargin: 0, pctNetMargin: 0 };
       const label = m.split('-')[0];
       return {
         month: t(label, label),
@@ -302,9 +442,11 @@ export default function MarginAnalysis() {
 
     Object.keys(calculatedMonthlyTotals).forEach(key => {
       const v = calculatedMonthlyTotals[key];
-      rev += v.revenue;
-      vc += v.varCost;
-      fc += v.fixedCost;
+      if (v) {
+        rev += v.revenue;
+        vc += v.varCost;
+        fc += v.fixedCost;
+      }
     });
 
     const grossMargin = rev - vc;

@@ -796,17 +796,86 @@ const CEODashboard = () => {
     let totalCogs = 0;
     let totalExp = 0;
 
+    const getParsedDateObj = (rawDate: any): Date | null => {
+      if (!rawDate) return null;
+      let d: Date | null = null;
+      if (rawDate instanceof Date) {
+        if (!isNaN(rawDate.getTime())) {
+          d = rawDate;
+        }
+      } else if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+        const serialDate = Number(rawDate);
+        if (serialDate > 20000) {
+          d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+        }
+      }
+
+      if (!d) {
+        const strDate = String(rawDate).trim();
+        const parts = strDate.split(/[\/\-]/);
+        if (parts.length === 3) {
+           let year = 0;
+           let month = 0;
+           let day = 1;
+
+           const p0 = Number(parts[0]);
+           const p1 = Number(parts[1]);
+           const p2 = Number(parts[2]);
+
+           if (p0 > 1000) {
+             year = p0;
+             month = p1;
+             day = p2;
+           } else if (p2 > 1000) {
+             year = p2;
+             if (p0 > 12) {
+               day = p0;
+               month = p1;
+             } else if (p1 > 12) {
+               month = p0;
+               day = p1;
+             } else {
+               day = p0;
+               month = p1;
+             }
+           } else {
+             d = new Date(strDate);
+           }
+
+           if (year > 2400) {
+             year -= 543;
+           }
+
+           if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+             d = new Date(year, month - 1, day);
+           }
+        } else {
+          d = new Date(strDate);
+        }
+      }
+
+      if (d && !isNaN(d.getTime())) {
+        let yr = d.getFullYear();
+        if (yr > 2400) {
+          yr -= 543;
+          d = new Date(yr, d.getMonth(), d.getDate());
+        }
+        return d;
+      }
+      return null;
+    };
+
     revenueData.forEach(row => {
-      const val = parseFloat((row['มูลค่าขาย(บาท)'] || '0').toString().replace(/,/g, ''));
+      const val = parseFloat((row['มูลค่าขาย(บาท)'] || row['มูลค่าขาย'] || row['Revenue'] || row['Total'] || '0').toString().replace(/,/g, ''));
       if (!isNaN(val)) totalRev += val;
       
-      const qty = parseFloat((row['ยอดขาย (ชิ้น)'] || '0').toString().replace(/,/g, ''));
-      const cost = parseFloat((row['ราคาทุน'] || '0').toString().replace(/,/g, ''));
+      const qty = parseFloat((row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || '0').toString().replace(/,/g, ''));
+      const cost = parseFloat((row['ราคาทุน'] || row['Cost'] || '0').toString().replace(/,/g, ''));
       if (!isNaN(qty) && !isNaN(cost)) totalCogs += (qty * cost);
     });
 
     expenseData.forEach(row => {
-      const e = parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || '0').toString().replace(/,/g, ''));
+      const e = parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || '0').toString().replace(/,/g, ''));
       if (!isNaN(e)) totalExp += e;
     });
 
@@ -818,17 +887,21 @@ const CEODashboard = () => {
     const monthlyExp: Record<string, number> = {};
     
     revenueData.forEach(row => {
-      const d = new Date(row['วันที่'] || row['Date'] || new Date());
-      if (isNaN(d.getTime())) return;
+      const dateVal = row['วันที่'] || row['Date'] || row['date'] || '';
+      const d = getParsedDateObj(dateVal);
+      if (!d) return;
       const key = d.toLocaleString('en-US', { month: 'short' });
-      monthlyRev[key] = (monthlyRev[key] || 0) + parseFloat((row['มูลค่าขาย(บาท)'] || '0').toString().replace(/,/g, '')) || 0;
+      const val = parseFloat((row['มูลค่าขาย(บาท)'] || row['มูลค่าขาย'] || row['Revenue'] || row['Total'] || '0').toString().replace(/,/g, '')) || 0;
+      monthlyRev[key] = (monthlyRev[key] || 0) + val;
     });
 
     expenseData.forEach(row => {
-      const d = new Date(row['mm/dd/yyyy'] || row['วันที่'] || new Date());
-      if (isNaN(d.getTime())) return;
+      const dateVal = row['วันที่'] || row['Date'] || row['date'] || '';
+      const d = getParsedDateObj(dateVal);
+      if (!d) return;
       const key = d.toLocaleString('en-US', { month: 'short' });
-      monthlyExp[key] = (monthlyExp[key] || 0) + parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || '0').toString().replace(/,/g, '')) || 0;
+      const val = parseFloat((row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || '0').toString().replace(/,/g, '')) || 0;
+      monthlyExp[key] = (monthlyExp[key] || 0) + val;
     });
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

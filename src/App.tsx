@@ -30,6 +30,7 @@ import Margin from './pages/Margin';
 import SaleAnalysis from './pages/SaleAnalysis';
 import ExpenseAnalysis from './pages/ExpenseAnalysis';
 import MarginAnalysis from './pages/MarginAnalysis';
+import BreakEvenAnalysis from './pages/BreakEven';
 
 export default function App() {
   return (
@@ -84,6 +85,11 @@ export default function App() {
                 <Route path="/data/margin" element={
                   <ProtectedRoute>
                     <MarginAnalysis />
+                  </ProtectedRoute>
+                } />
+                <Route path="/data/break-even" element={
+                  <ProtectedRoute>
+                    <BreakEvenAnalysis />
                   </ProtectedRoute>
                 } />
 

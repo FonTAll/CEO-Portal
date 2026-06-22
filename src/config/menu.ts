@@ -7,7 +7,8 @@ import {
   DollarSign,
   TrendingUp,
   BarChart3,
-  Percent
+  Percent,
+  Scale
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -31,6 +32,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: 'da_sale', name: 'SALE ANALYSIS', nameTh: 'วิเคราะห์การขาย', path: '/data/sale', icon: PieChart, category: 'TOP' },
   { id: 'da_expense', name: 'EXPENSE ANALYSIS', nameTh: 'วิเคราะห์ค่าใช้จ่าย', path: '/data/expense', icon: Percent, category: 'TOP' },
   { id: 'da_margin', name: 'MARGIN ANALYSIS', nameTh: 'วิเคราะห์กำไร', path: '/data/margin', icon: Briefcase, category: 'TOP' },
+  { id: 'da_breakeven', name: 'BREAK-EVEN ANALYSIS', nameTh: 'วิเคราะห์จุดคุ้มทุน', path: '/data/break-even', icon: Scale, category: 'TOP' },
   
   // ADMINISTRATION
   { 

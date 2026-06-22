@@ -288,6 +288,12 @@ export default function Margin() {
     return saved ? JSON.parse(saved) : INITIAL_FIXED_COSTS;
   });
 
+  const [isUsingDemoData, setIsUsingDemoData] = useState<boolean>(() => {
+    // If we have saved data in localStorage from a previous successful sync, we are not on demo data
+    const saved = localStorage.getItem('margin_categories_v1');
+    return !saved;
+  });
+
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const isEditMode = false; // EDIT MODE is strictly disabled per request
@@ -304,22 +310,80 @@ export default function Margin() {
       const salesData = salesRes?.data?.items || [];
       const costData = costRes?.data?.items || [];
 
+      if (salesData.length === 0 && costData.length === 0) {
+        // If there is no uploaded data in Google Sheets or Firebase yet, we preserve the pre-populated INITIAL_CATEGORIES & INITIAL_FIXED_COSTS.
+        handleSaveData(INITIAL_CATEGORIES, INITIAL_FIXED_COSTS);
+        setIsUsingDemoData(true);
+        setIsSyncing(false);
+        return;
+      }
+
       // Helper for Parsing Dates
       const getParsedMonthYear = (rawDate: any) => {
+        if (!rawDate) return 'Unknown-2026';
         let d: Date | null = null;
-        if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
+        if (rawDate instanceof Date) {
+          if (!isNaN(rawDate.getTime())) {
+            d = rawDate;
+          }
+        } else if (typeof rawDate === 'number' || !isNaN(Number(rawDate))) {
           const serialDate = Number(rawDate);
-          if (serialDate > 20000) d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+          if (serialDate > 20000) {
+            d = new Date((serialDate - (25567 + 1)) * 86400 * 1000);
+          }
         }
+
         if (!d) {
-          const dateStr = String(rawDate);
-          const matches = dateStr.match(/^(\d+)-([A-Za-z]+)-(\d+)$/);
-          if (matches) return `${matches[2]}-${matches[3]}`;
-          d = new Date(rawDate);
+          const strDate = String(rawDate).trim();
+          const parts = strDate.split(/[\/\-]/);
+          if (parts.length === 3) {
+             let year = 0;
+             let month = 0;
+             let day = 1;
+
+             const p0 = Number(parts[0]);
+             const p1 = Number(parts[1]);
+             const p2 = Number(parts[2]);
+
+             if (p0 > 1000) {
+               year = p0;
+               month = p1;
+               day = p2;
+             } else if (p2 > 1000) {
+               year = p2;
+               if (p0 > 12) {
+                 day = p0;
+                 month = p1;
+               } else if (p1 > 12) {
+                 month = p0;
+                 day = p1;
+               } else {
+                 day = p0;
+                 month = p1;
+               }
+             } else {
+               d = new Date(strDate);
+             }
+
+             if (year > 2400) {
+               year -= 543;
+             }
+
+             if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+               d = new Date(year, month - 1, day);
+             }
+          } else {
+            d = new Date(strDate);
+          }
         }
+
         if (d && !isNaN(d.getTime())) {
+          let yr = d.getFullYear();
+          if (yr > 2400) {
+            yr -= 543;
+          }
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          return `${months[d.getMonth()]}-${d.getFullYear()}`;
+          return `${months[d.getMonth()]}-${yr}`;
         }
         return 'Unknown-2026';
       };
@@ -401,6 +465,7 @@ export default function Margin() {
         newFixedCosts[m] = actualFixCost;
       });
 
+      setIsUsingDemoData(false);
       handleSaveData(newCategories, newFixedCosts);
       if (!isSilent) {
         alert(t('Synced data with Database', 'ดึงข้อมูลสำเร็จ!'));
@@ -534,7 +599,7 @@ export default function Margin() {
     let totalMarginVal = 0;
 
     MONTH_LABELS.forEach(m => {
-      const monthData = calculatedMonthlyTotals[m];
+      const monthData = calculatedMonthlyTotals[m] || { revenue: 0, totalVarCost: 0, fixCost: 0, margin: 0 };
       totalRev += monthData.revenue;
       totalVC += monthData.totalVarCost;
       totalFC += monthData.fixCost;
@@ -572,7 +637,7 @@ export default function Margin() {
         <span className="font-black tracking-[0.3em] [writing-mode:vertical-rl] rotate-180 whitespace-nowrap uppercase text-[11px]">{t('MARGIN GUIDE', 'คู่มือใช้งาน')}</span>
       </button>
 
-      <MarginUserGuidePanel isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} t={t} />
+      {isGuideOpen && <MarginUserGuidePanel isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} t={t} />}
 
       {/* HEADER SECTION */}
       <div id="margin-header-container" className="h-14 px-4 sm:px-8 mt-[2px] mb-4 flex flex-row items-center justify-between gap-4 z-20 shrink-0">
@@ -626,6 +691,25 @@ export default function Margin() {
           </button>
         </div>
       </div>
+
+      {/* DEMO DATA ALERT BANNER */}
+      {isUsingDemoData && (
+        <div id="margin-demo-alert-banner" className="mx-4 sm:mx-8 mb-6 bg-amber-50/75 border border-amber-200/80 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-lg bg-amber-100/80 flex items-center justify-center text-amber-700 shrink-0 mt-0.5">
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <h4 className="text-[13px] font-black text-amber-950 uppercase tracking-tight">
+                {t('Currently Displaying Sample Forecast Data (Demo)', 'ขณะนี้กำลังแสดงผลลัพธ์ด้วยข้อมูลรายงานตัวอย่าง (Demo Data)')}
+              </h4>
+              <p className="text-[11px] text-amber-800 font-bold mt-0.5 leading-relaxed">
+                {t('Your database sheets are currently empty or disconnected. Go to the "Google Sheets Sync" tab to connect and execute setup. Then upload data via "Sale Revenue" and "Cost & Expenses" to render actual numbers.', 'ระบุ: เนื่องจากบัญชี Google Sheets ของคุณยังว่างเปล่าหรือไม่ได้เชื่อมต่อ ระบบจึงแสดงตัวอย่างเพื่อเป็นแนวทาง หากคุณต้องการเริ่มใช้งานจริง กรุณาไปที่เมนูเครื่องมือตั้งค่า "Google Sheets Sync" ทางซ้ายมือเพื่อทำการเชื่อมต่อ และนำเข้าเนื้อหาไฟล์ Excel/CSV ย้อนหลังจากหน้าเมนู "Sales / Revenue" และ "Cost / Expenses"')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI CARDS (Interactive Summaries) */}
       <div id="margin-kpis-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 mb-6">

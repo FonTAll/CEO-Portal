@@ -669,7 +669,11 @@ export default function SaleRevenue() {
       
       // Perform writes for non-duplicate/new dates
       if (rowsToWrite.length > 0) {
-        await api.post('write', 'SaleRevenue', rowsToWrite);
+        const chunkSize = 150; // Protective slice size to keep execution under Google's 30s limits
+        for (let i = 0; i < rowsToWrite.length; i += chunkSize) {
+          const chunk = rowsToWrite.slice(i, i + chunkSize);
+          await api.post('write', 'SaleRevenue', chunk);
+        }
       }
 
       localStorage.setItem('saleRevenueCache', JSON.stringify(updatedDataList));

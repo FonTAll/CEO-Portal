@@ -226,12 +226,20 @@ export default function CostExpense() {
       
       // Perform updates for matching dates
       if (rowsToUpdate.length > 0) {
-        await api.post('update', 'CostExpense', rowsToUpdate);
+        const chunkSize = 150;
+        for (let i = 0; i < rowsToUpdate.length; i += chunkSize) {
+          const chunk = rowsToUpdate.slice(i, i + chunkSize);
+          await api.post('update', 'CostExpense', chunk);
+        }
       }
       
       // Perform writes for non-duplicate/new dates
       if (rowsToWrite.length > 0) {
-        await api.post('write', 'CostExpense', rowsToWrite);
+        const chunkSize = 150;
+        for (let i = 0; i < rowsToWrite.length; i += chunkSize) {
+          const chunk = rowsToWrite.slice(i, i + chunkSize);
+          await api.post('write', 'CostExpense', chunk);
+        }
       }
 
       localStorage.setItem('costExpenseCache', JSON.stringify(updatedDataList));

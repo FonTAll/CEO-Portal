@@ -230,6 +230,13 @@ function writeData(sheet, data, headersObj) {
   const lastRow = sheet.getLastRow();
   sheet.getRange(lastRow + 1, 1, rows.length, sheetHeaders.length).setValues(rows);
   
+  // Auto-Cleanup: ลบแถวว่างส่วนเกินหลังจากแถวสุดท้ายเพื่อประหยัดทรัพยากรและให้หน้าค้นหาเร็วขึ้น
+  const newLastRow = sheet.getLastRow();
+  const maxRows = sheet.getMaxRows();
+  if (maxRows > newLastRow + 1) {
+    sheet.deleteRows(newLastRow + 1, maxRows - newLastRow - 1);
+  }
+  
   return createResponse("success", `บันทึกข้อมูลเรียบร้อยจำนวน ${rows.length} รายการ`, null, headersObj);
 }
 
