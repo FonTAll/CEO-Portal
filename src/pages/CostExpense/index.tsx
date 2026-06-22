@@ -283,6 +283,51 @@ export default function CostExpense() {
     }
 
     const strDate = String(rawDate).trim();
+
+    // Robust Month-Year Parser (e.g., "Jan 2026", "Jan-26", "January 2026", "01/2026", "2026-01")
+    const monthsAbbrev = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const monthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+    const norm = strDate.toLowerCase();
+    let monthIdx = -1;
+    let year = -1;
+
+    for (let i = 0; i < 12; i++) {
+      if (norm.includes(monthsFull[i])) {
+        monthIdx = i;
+        break;
+      }
+    }
+    if (monthIdx === -1) {
+      for (let i = 0; i < 12; i++) {
+        if (norm.includes(monthsAbbrev[i])) {
+          monthIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (monthIdx !== -1) {
+      const yearMatch = norm.replace(/[a-z]/g, '').match(/\b(20\d{2}|\d{2})\b/);
+      if (yearMatch) {
+        const yrNum = Number(yearMatch[1]);
+        year = yrNum < 100 ? 2000 + yrNum : yrNum;
+      } else {
+        const matchAnyDigits = norm.match(/\d+/g);
+        if (matchAnyDigits) {
+          const lastBlock = Number(matchAnyDigits[matchAnyDigits.length - 1]);
+          if (lastBlock < 100) {
+            year = 2000 + lastBlock;
+          } else {
+            year = lastBlock;
+          }
+        }
+      }
+      if (year !== -1) {
+        if (year > 2400) year -= 543;
+        return new Date(year, monthIdx, 1);
+      }
+    }
+
     const parts = strDate.split(/[\/\-]/);
     if (parts.length === 3) {
        let year = 0;
@@ -382,6 +427,17 @@ export default function CostExpense() {
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'THB' }).format(val).replace('THB', '฿');
+  };
+
+  const formatWithCommas = (val: any) => {
+    if (val === undefined || val === null || String(val).trim() === '' || val === '-') return '-';
+    const cleanStr = String(val).replace(/,/g, '');
+    const num = parseFloat(cleanStr);
+    if (isNaN(num)) return String(val);
+    if (num % 1 === 0) {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
@@ -537,15 +593,35 @@ export default function CostExpense() {
                         key={idx} 
                         className="hover:bg-[#f8f9fa] transition-colors group cursor-default"
                       >
-                        <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap">{getDateFromRow(row)}</td>
-                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                           <span className="bg-[#f8f9fa] border border-[#eaeaec] px-3 py-1 rounded-md text-[12px] font-black text-[#4d87a8]">{row[mapping.headcountCol] || row['จน.พนักงาน'] || '-'}</span>
+                        <td className="px-4 py-2.5 text-[12px] font-black text-[#212c46] whitespace-nowrap">
+                          {(() => {
+                            const rawDate = getDateFromRow(row);
+                            if (!rawDate || rawDate === '-') return '-';
+                            const d = getParsedDate(rawDate);
+                            if (!d || isNaN(d.getTime())) return String(rawDate);
+                            return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                          })()}
                         </td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.laborCol] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.waterCol] || row['ค่าน้ำ (บาท)'] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.electricCol] || row['ค่าไฟฟ้า (บาท)'] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">{row[mapping.gasCol] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'] || '-'}</td>
-                        <td className="px-4 py-2.5 text-[12px] font-black text-[#d96245] text-right whitespace-nowrap font-mono">{row[mapping.totalCol] || '-'}</td>
+                        <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                           <span className="bg-[#f8f9fa] border border-[#eaeaec] px-3 py-1 rounded-md text-[12px] font-black text-[#4d87a8]">
+                             {formatWithCommas(row[mapping.headcountCol] || row['จน.พนักงาน'])}
+                           </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">
+                          {formatWithCommas(row[mapping.laborCol])}
+                        </td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">
+                          {formatWithCommas(row[mapping.waterCol] || row['ค่าน้ำ (บาท)'])}
+                        </td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">
+                          {formatWithCommas(row[mapping.electricCol] || row['ค่าไฟฟ้า (บาท)'])}
+                        </td>
+                        <td className="px-4 py-2.5 text-[12px] font-mono font-medium text-[#7a8b95] text-right whitespace-nowrap">
+                          {formatWithCommas(row[mapping.gasCol] || row['ค่าแก๊ส (บาท)'] || row['ค่าน้ำมัน (บาท)'])}
+                        </td>
+                        <td className="px-4 py-2.5 text-[12px] font-black text-[#d96245] text-right whitespace-nowrap font-mono">
+                          {formatWithCommas(row[mapping.totalCol])}
+                        </td>
                       </motion.tr>
                     ))}
                   </AnimatePresence>

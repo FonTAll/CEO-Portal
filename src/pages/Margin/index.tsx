@@ -227,18 +227,33 @@ function MarginUserGuidePanel({ isOpen, onClose, t }: any) {
             <h4 className="text-[14px] font-black text-[#212c46] mb-3 uppercase flex items-center gap-2 border-b-2 border-[#d7d7d7] pb-2 font-mono">
               <Layers size={18} className="text-[#b7a159]"/> {t('1. Calculation Logic', '1. สูตรคำนวณกำไรและต้นทุน')}
             </h4>
-            <div className="space-y-3 font-normal text-[#414757] leading-relaxed">
+            <div className="space-y-4 font-normal text-[#414757] leading-relaxed">
               <p>
-                <strong>{t('Revenue / ยอดขาย:', 'Revenue / ยอดขาย:')}</strong> {t('Total sales for all products in the category.', 'ยอดขายรวมของทุกสินค้าย่อยในหมวดหมู่นั้นๆ ในกรอบเวลา 1 เดือน (ดึงจากเมนู Sale Revenue)')}
+                <strong>{t('Revenue / ยอดขาย:', 'Revenue / ยอดขาย:')}</strong> {t('Total sales for all products in the category.', 'ยอดสะสมยอดขาย (Revenue) ของกลุ่มสินค้านั้นๆ ในรอบเดือน (ดึงจาก Sale Revenue)')}
               </p>
               <p>
-                <strong>{t('Variable Cost / ต้นทุนแปรผันรายสินค้า:', 'Variable Cost / ต้นทุนแปรผันรายสินค้า:')}</strong> {t('Calculated via weighted average of known product costs.', 'คำนวณจาก (pcs. × avg. Cost/pcs.) โดย avg. Cost/pcs. มาจากการหาค่าเฉลี่ยแบบถ่วงน้ำหนัก (Weighted Average) ของต้นทุนสินค้าย่อยที่มีข้อมูลในกลุ่มนั้น')}
+                <strong>{t('pcs. / จำนวนชิ้น:', 'pcs. / จำนวนชิ้น:')}</strong> {t('Total quantity sold in pieces for that category.', 'จำนวนชิ้นสินค้าที่ขายได้จริงในกลุ่มสินค้านั้นๆ ในรอบเดือน (ดึงจาก Sale Qty)')}
               </p>
               <p>
-                <strong>{t('Fix Cost / ค่าใช้จ่ายปฏิบัติการ (คงที่):', 'Fix Cost / ค่าใช้จ่ายปฏิบัติการ (คงที่):')}</strong> {t('Total factory expense derived from Cost menu minus total variable costs.', 'ค่าใช้จ่ายรวมทั้งโรงงาน (ดึงจากเมนู Cost & Expense) นำมาหักลบด้วย Variable Cost รวมทั้งหมดในเดือนนั้น')}
+                <strong>{t('avg. Price/pcs. / ราคาขายเฉลี่ยต่อชิ้น:', 'avg. Price/pcs. / ราคาขายเฉลี่ยต่อชิ้น:')}</strong> {t('Average selling price calculated as Revenue / pcs.', 'ราคาขายเฉลี่ยต่อชิ้น คำนวณมาจาก (Revenue / pcs.) เพื่อตรวจสอบราคากลาง')}
               </p>
               <p>
-                <strong>{t('Margin / กำไรขั้นต้นสุทธิ:', 'Margin / กำไรสุทธิ:')}</strong> {t('Revenue - Variable Cost - Fix Cost.', 'คำนวณจาก (Revenue รวม) - (Variable Cost รวม) - (Fix Cost)')}
+                <strong>{t('%Sale / สัดส่วนยอดขาย:', '%Sale / สัดส่วนยอดขาย:')}</strong> {t('Sales proportion contribution of each category.', 'สัดส่วนเปอร์เซ็นต์ยอดขายของแต่ละกลุ่มสินค้าเทียบกับยอดขายรวมในเดือนนั้น คำนวณมาจาก (ยอดขายกลุ่มสินค้า / ยอดขายรวมของเดือน) x 100')}
+              </p>
+              <p>
+                <strong>{t('Mat. Cost / ต้นทุนวัตถุดิบ (จากเดิม Variable Cost):', 'Mat. Cost / ต้นทุนวัตถุดิบ (จากเดิม Variable Cost):')}</strong> {t('Material component costs calculated per category as (pcs. × avg. Cost/pcs.).', 'ยอดรวมต้นทุนวัตถุดิบ (Material Cost) ของหมวดหมู่นั้นๆ คำนวณจาก (pcs. × avg. Cost/pcs.) โดยราคาทุนเฉลี่ยได้จากการคำนวณแบบถ่วงน้ำหนัก (Weighted Average) ของสินค้า')}
+              </p>
+              <p>
+                <strong>{t('avg. Cost/pcs. / ต้นทุนเฉลี่ยต่อชิ้น:', 'avg. Cost/pcs. / ต้นทุนเฉลี่ยต่อชิ้น:')}</strong> {t('Average material cost per unit computed as Mat. Cost / pcs.', 'ราคาทุนวัตถุดิบเฉลี่ยต่อหน่วยของกลุ่มสินค้า คำนวณมาจาก (Mat. Cost / pcs.)')}
+              </p>
+              <p>
+                <strong>{t('LB & OH / ค่าแรงและโสหุ้ย (จากเดิม Fix Cost):', 'LB & OH / ค่าแรงและโสหุ้ย (จากเดิม Fix Cost):')}</strong> {t('Labor & Overhead derived exactly as TOTAL COST from Cost & Expense screen.', 'ค่าแรงและค่าใช้จ่ายโสหุ้ยการผลิต (Labor & Overhead) โดยดึงเป็นค่ารวมตรงจากช่อง TOTAL COST ของหน้า COST & EXPENSE')}
+              </p>
+              <p>
+                <strong>{t('Margin / กำไรขั้นต้นสุทธิ:', 'Margin / กำไรขั้นต้นสุทธิ:')}</strong> {t('Revenue - Mat. Cost - LB & OH.', 'กำไรขั้นต้นสุทธิของยอดงานขายหลังตัดต้นทุนคำนวณทั้งหมดจาก: (Revenue รวม) - (Mat. Cost รวม) - (LB & OH)')}
+              </p>
+              <p>
+                <strong>{t('%Margin / เปอร์เซ็นต์กำไรขั้นต้น:', '%Margin / เปอร์เซ็นต์กำไรขั้นต้น:')}</strong> {t('Gross margin percentage computed as (Margin / Revenue) * 100.', 'เปอร์เซ็นต์อัตราส่วนกำไรขั้นต้นยอดขายรวมเพื่อพยากรณ์จุดคืนทุน คำนวณจาก (Margin / Revenue) x 100')}
               </p>
             </div>
           </section>
@@ -318,6 +333,20 @@ export default function Margin() {
         return;
       }
 
+      // Load mapping configurations dynamically to correctly identify customized column keys
+      const savedSalesMapping = localStorage.getItem('saleRevenueMapping');
+      const salesMapping = savedSalesMapping ? JSON.parse(savedSalesMapping) : {
+        dateCol: 'mm/dd/yyyy',
+        productCol: 'ชื่อสินค้า',
+        revenueCol: 'มูลค่าขาย(บาท)'
+      };
+
+      const savedCostMapping = localStorage.getItem('costExpenseMapping');
+      const costMapping = savedCostMapping ? JSON.parse(savedCostMapping) : {
+        dateCol: 'mm/dd/yyyy',
+        totalCol: 'ต้นทุนและค่าใช้จ่ายรวม'
+      };
+
       // Helper for Parsing Dates
       const getParsedMonthYear = (rawDate: any) => {
         if (!rawDate) return 'Unknown-2026';
@@ -335,7 +364,57 @@ export default function Margin() {
 
         if (!d) {
           const strDate = String(rawDate).trim();
-          const parts = strDate.split(/[\/\-]/);
+
+          // Robust Month-Year Parser (e.g., "Jan 2026", "Jan-26", "January 2026", "01/2026", "2026-01")
+          const monthsAbbrev = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const monthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+          const norm = strDate.toLowerCase();
+          let monthIdx = -1;
+          let year = -1;
+
+          for (let i = 0; i < 12; i++) {
+            if (norm.includes(monthsFull[i])) {
+              monthIdx = i;
+              break;
+            }
+          }
+          if (monthIdx === -1) {
+            for (let i = 0; i < 12; i++) {
+              if (norm.includes(monthsAbbrev[i])) {
+                monthIdx = i;
+                break;
+              }
+            }
+          }
+
+          if (monthIdx !== -1) {
+            const yearMatch = norm.replace(/[a-z]/g, '').match(/\b(20\d{2}|\d{2})\b/);
+            if (yearMatch) {
+              const yrNum = Number(yearMatch[1]);
+              year = yrNum < 100 ? 2000 + yrNum : yrNum;
+            } else {
+              const matchAnyDigits = norm.match(/\d+/g);
+              if (matchAnyDigits) {
+                const lastBlock = Number(matchAnyDigits[matchAnyDigits.length - 1]);
+                if (lastBlock < 100) {
+                  year = 2000 + lastBlock;
+                } else {
+                  year = lastBlock;
+                }
+              }
+            }
+            if (year !== -1) {
+              if (year > 2400) year -= 543;
+              d = new Date(year, monthIdx, 1);
+            }
+          }
+        }
+
+        if (!d) {
+          const strDate = String(rawDate).trim();
+          // Extract the date part prior to any space or T (which splits on time part)
+          const cleanDateStr = strDate.split(/[ T]/)[0];
+          const parts = cleanDateStr.split(/[\/\-]/);
           if (parts.length === 3) {
              let year = 0;
              let month = 0;
@@ -361,8 +440,6 @@ export default function Margin() {
                  day = p0;
                  month = p1;
                }
-             } else {
-               d = new Date(strDate);
              }
 
              if (year > 2400) {
@@ -372,8 +449,14 @@ export default function Margin() {
              if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
                d = new Date(year, month - 1, day);
              }
-          } else {
-            d = new Date(strDate);
+          }
+          
+          // Fallback if the parts-based parse didn't result in a valid date
+          if (!d || isNaN(d.getTime())) {
+            const parsedDirect = new Date(strDate);
+            if (!isNaN(parsedDirect.getTime())) {
+              d = parsedDirect;
+            }
           }
         }
 
@@ -401,14 +484,14 @@ export default function Margin() {
       const knownCostsTracker: Record<string, { qty: number, costSum: number }> = {}; 
       // track known costs per category/monthkey
       salesData.forEach((row: any) => {
-        const dateVal = row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
+        const dateVal = row[salesMapping.dateCol] || row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
         const mKey = getParsedMonthYear(dateVal);
         const qty = parseFloat(String(row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || Object.values(row)[3] || 0).replace(/,/g, '')) || 0;
         const price = parseFloat(String(row['ราคาขาย'] || row['ราคาขาย(บาท)'] || row['Price'] || Object.values(row)[4] || 0).replace(/,/g, '')) || 0;
-        const revenue = parseFloat(String(row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
+        const revenue = parseFloat(String(row[salesMapping.revenueCol] || row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
         const cost = parseFloat(String(row['ราคาทุน'] || row['Cost'] || '0').replace(/,/g, '')) || 0;
         
-        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row['Category'] || Object.values(row)[1] || 'Others');
+        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row[salesMapping.productCol] || row['Category'] || Object.values(row)[1] || 'Others');
         // Map common Th names back to tracking category if it deviates slightly, or just find it. We'll find by categoryTh or name
         let targetCat = newCategories.find(c => c.category === category || c.categoryTh === category);
         if (!targetCat) targetCat = newCategories.find(c => c.category === 'Others'); // fallback
@@ -449,19 +532,18 @@ export default function Margin() {
       });
 
       costData.forEach((row: any) => {
-        const dateVal = row['วันที่'] || row['Date'] || row['date'] || Object.values(row)[0] || '';
+        const dateVal = row[costMapping.dateCol] || row['mm/dd/yyyy'] || row['วันที่/Month'] || row['วันที่'] || row['Date'] || row['date'] || row['Month'] || row['month'] || Object.values(row)[0] || '';
         const mKey = getParsedMonthYear(dateVal);
-        const totalExpense = parseFloat(String(row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
+        const totalExpense = parseFloat(String(row[costMapping.totalCol] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || row['total'] || row['รวม'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
         
         if (newFixedCosts[mKey] === undefined) newFixedCosts[mKey] = 0;
         newFixedCosts[mKey] += totalExpense;
       });
 
-      // Fix Cost = (Total Factory Cost) - (Total calculated Variable Cost for all categories in that month)
+      // Fix Cost = TOTAL COST directly as requested
       Object.keys(newFixedCosts).forEach(m => {
-        const sumVarCost = newCategories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
-        let actualFixCost = newFixedCosts[m] - sumVarCost;
-        if (actualFixCost < 0) actualFixCost = 0; // Prevent negative fixed cost if variable exceeds? Typically factory cost > variable
+        let actualFixCost = newFixedCosts[m];
+        if (actualFixCost < 0) actualFixCost = 0;
         newFixedCosts[m] = actualFixCost;
       });
 
@@ -507,15 +589,14 @@ export default function Margin() {
         return (sumVal / 1000000).toFixed(4) + " MB";
       }).join(",") + "\n";
 
-      // 2. Variable Cost
-      csvContent += "Variable Cost," + MONTH_LABELS.map(m => {
+      // 2. Mat. Cost
+      csvContent += "Mat. Cost," + MONTH_LABELS.map(m => {
         const sumVarProd = categories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
-        const totalVC = sumVarProd + (fixedCosts[m] || 0);
-        return (totalVC / 1000000).toFixed(4) + " MB";
+        return (sumVarProd / 1000000).toFixed(4) + " MB";
       }).join(",") + "\n";
 
-      // 3. Fix Cost
-      csvContent += "Fix Cost," + MONTH_LABELS.map(m => {
+      // 3. LB & OH
+      csvContent += "LB & OH," + MONTH_LABELS.map(m => {
         return ((fixedCosts[m] || 0) / 1000000).toFixed(4) + " MB";
       }).join(",") + "\n";
 
@@ -523,8 +604,8 @@ export default function Margin() {
       csvContent += "Margin," + MONTH_LABELS.map(m => {
         const rev = categories.reduce((acc, cat) => acc + (cat.months[m]?.sales || 0), 0);
         const sumVarProd = categories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
-        const totalVC = sumVarProd + (fixedCosts[m] || 0);
-        const marg = rev - totalVC;
+        const fix = fixedCosts[m] || 0;
+        const marg = rev - sumVarProd - fix;
         return (marg / 1000000).toFixed(4) + " MB";
       }).join(",") + "\n";
 
@@ -533,7 +614,7 @@ export default function Margin() {
         const name = t(cat.category, cat.categoryTh);
         csvContent += `"${name} (Sales)",` + MONTH_LABELS.map(m => cat.months[m]?.sales || 0).join(",") + "\n";
         csvContent += `"${name} (pcs)",` + MONTH_LABELS.map(m => cat.months[m]?.pcs || 0).join(",") + "\n";
-        csvContent += `"${name} (Variable Cost)",` + MONTH_LABELS.map(m => cat.months[m]?.varCost || 0).join(",") + "\n";
+        csvContent += `"${name} (Mat. Cost)",` + MONTH_LABELS.map(m => cat.months[m]?.varCost || 0).join(",") + "\n";
       });
 
       const encodedUri = encodeURI(csvContent);
@@ -563,17 +644,17 @@ export default function Margin() {
       // 1. Revenue is sum of category sales
       const rev = categories.reduce((sum, cat) => sum + (cat.months[m]?.sales || 0), 0);
       
-      // 2. Product Variable Cost is sum of category varCost
+      // 2. Product Variable Cost is sum of category varCost (Material Cost / Mat. Cost)
       const prodVarCost = categories.reduce((sum, cat) => sum + (cat.months[m]?.varCost || 0), 0);
       
-      // 3. Fix Cost Row
+      // 3. Fix Cost Row (LB & OH)
       const fix = fixedCosts[m] || 0;
 
-      // 4. Summary Variable Cost (Actually just product variable cost + fixed cost to represent total Cost)
-      const totalVarCost = prodVarCost + fix;
+      // 4. Material Cost (Mat. Cost / Variable Cost)
+      const totalVarCost = prodVarCost;
 
-      // 5. Margin = Revenue - Total Cost (which is prodVarCost + fix)
-      const marginVal = rev - totalVarCost;
+      // 5. Margin = Revenue - Mat. Cost - LB & OH
+      const marginVal = rev - totalVarCost - fix;
 
       // 6. %Margin = (Margin / Revenue) * 100
       const pctMarginVal = rev > 0 ? (marginVal / rev) * 100 : 0;
@@ -736,7 +817,7 @@ export default function Margin() {
             <BarChart3 size={90} color={THEME.danger} />
           </div>
           <div className="flex justify-between items-start w-full">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('TOTAL COMBINED COST', 'ต้นทุนแปรผันรวม')}</p>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('TOTAL MAT. COST', 'ต้นทุนวัตถุดิบรวม (Mat. Cost)')}</p>
             <div className="h-7 w-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-[#932c2e]">
               <BarChart3 size={14} />
             </div>
@@ -819,7 +900,11 @@ export default function Margin() {
                   {MONTH_LABELS.map(m => {
                     const val = calculatedMonthlyTotals[m].revenue;
                     return (
-                      <td key={'rev-' + m} className="px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#657f4d]">
+                      <td 
+                        key={'rev-' + m} 
+                        className="px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#657f4d] cursor-help"
+                        title={val > 0 ? `${val.toLocaleString()} ฿` : undefined}
+                      >
                         {val > 0 ? formatMB(val) : '-'}
                       </td>
                     );
@@ -829,12 +914,16 @@ export default function Margin() {
                 {/* VARIABLE COST ROW */}
                 <tr className="border-b border-[#eaeaec] bg-[#fafafa]">
                   <th className="px-4 py-3 text-[12px] font-black text-[#212c46] tracking-wider uppercase font-mono border-r border-[#eaeaec]">
-                    <span className="text-[#932c2e]">{t('Variable Cost', 'Variable Cost')}</span>
+                    <span className="text-[#932c2e]">{t('Mat. Cost', 'Mat. Cost')}</span>
                   </th>
                   {MONTH_LABELS.map(m => {
                     const val = calculatedMonthlyTotals[m].totalVarCost;
                     return (
-                      <td key={'vc-' + m} className="px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#932c2e]">
+                      <td 
+                        key={'vc-' + m} 
+                        className="px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#932c2e] cursor-help"
+                        title={val > 0 ? `${val.toLocaleString()} ฿` : undefined}
+                      >
                         {val > 0 ? formatMB(val) : '-'}
                       </td>
                     );
@@ -844,12 +933,16 @@ export default function Margin() {
                 {/* FIX COST ROW */}
                 <tr className="border-b border-[#eaeaec] bg-[#fafafa]">
                   <th className="px-4 py-3 text-[12px] font-black text-[#212c46] tracking-wider uppercase font-mono border-r border-[#eaeaec]">
-                    <span className="text-[#932c2e]">{t('Fix Cost', 'Fix Cost')}</span>
+                    <span className="text-[#932c2e]">{t('LB & OH', 'LB & OH')}</span>
                   </th>
                   {MONTH_LABELS.map(m => {
                     const val = calculatedMonthlyTotals[m].fixCost;
                     return (
-                      <td key={'fc-' + m} className="px-3 py-1 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#932c2e]">
+                      <td 
+                        key={'fc-' + m} 
+                        className="px-3 py-1 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono text-[#932c2e] cursor-help"
+                        title={val > 0 ? `${val.toLocaleString()} ฿` : undefined}
+                      >
                         {val > 0 ? formatMB(val) : '-'}
                       </td>
                     );
@@ -865,7 +958,11 @@ export default function Margin() {
                     const val = calculatedMonthlyTotals[m].margin;
                     const isPositive = val >= 0;
                     return (
-                      <td key={'marg-' + m} className={`px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono ${isPositive ? 'text-sky-600' : 'text-[#a94228]'}`}>
+                      <td 
+                        key={'marg-' + m} 
+                        className={`px-3 py-2 text-[12px] font-black text-right border-r border-[#eaeaec] font-mono cursor-help ${isPositive ? 'text-sky-600' : 'text-[#a94228]'}`}
+                        title={val !== 0 ? `${val.toLocaleString()} ฿` : undefined}
+                      >
                         {val !== 0 ? formatMB(val) : '-'}
                       </td>
                     );
@@ -975,13 +1072,17 @@ export default function Margin() {
                       {/* Row 5: Variable Cost (light crimson red background area) */}
                       <tr className="bg-[#fcf3f3] hover:bg-red-50/80 border-b border-[#eaeaec]/40 text-[#c81e1e]">
                         <td className="px-4 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec] pr-4 bg-red-50/30 font-mono">
-                          {t('Variable Cost', 'Variable Cost')}
+                          {t('Mat. Cost', 'Mat. Cost')}
                         </td>
                         {MONTH_LABELS.map(m => {
                           const val = cat.months[m]?.varCost || 0;
                           return (
-                            <td key={'vccost-' + catIdx + m} className="px-3 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec]/35 font-mono text-[#c81e1e]">
-                              {val > 0 ? val.toLocaleString() : '0'}
+                            <td 
+                              key={'vccost-' + catIdx + m} 
+                              className="px-3 py-1.5 text-[12px] font-bold text-right border-r border-[#eaeaec]/35 font-mono text-[#c81e1e] cursor-help"
+                              title={val > 0 ? `${val.toLocaleString()} ฿` : undefined}
+                            >
+                              {val > 0 ? formatMB(val) : '-'}
                             </td>
                           );
                         })}

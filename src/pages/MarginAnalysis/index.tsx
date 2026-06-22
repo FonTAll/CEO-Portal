@@ -205,6 +205,20 @@ export default function MarginAnalysis() {
       const salesData = salesRes?.data?.items || [];
       const costData = costRes?.data?.items || [];
 
+      // Load mapping configurations dynamically to correctly identify customized column keys
+      const savedSalesMapping = localStorage.getItem('saleRevenueMapping');
+      const salesMapping = savedSalesMapping ? JSON.parse(savedSalesMapping) : {
+        dateCol: 'mm/dd/yyyy',
+        productCol: 'ชื่อสินค้า',
+        revenueCol: 'มูลค่าขาย(บาท)'
+      };
+
+      const savedCostMapping = localStorage.getItem('costExpenseMapping');
+      const costMapping = savedCostMapping ? JSON.parse(savedCostMapping) : {
+        dateCol: 'วันที่/Month',
+        totalCol: 'ต้นทุนและค่าใช้จ่ายรวม'
+      };
+
       // Helper for Parsing Dates
       const getParsedMonthYear = (rawDate: any) => {
         if (!rawDate) return 'Unknown-2026';
@@ -222,7 +236,57 @@ export default function MarginAnalysis() {
 
         if (!d) {
           const strDate = String(rawDate).trim();
-          const parts = strDate.split(/[\/\-]/);
+
+          // Robust Month-Year Parser (e.g., "Jan 2026", "Jan-26", "January 2026", "01/2026", "2026-01")
+          const monthsAbbrev = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const monthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+          const norm = strDate.toLowerCase();
+          let monthIdx = -1;
+          let year = -1;
+
+          for (let i = 0; i < 12; i++) {
+            if (norm.includes(monthsFull[i])) {
+              monthIdx = i;
+              break;
+            }
+          }
+          if (monthIdx === -1) {
+            for (let i = 0; i < 12; i++) {
+              if (norm.includes(monthsAbbrev[i])) {
+                monthIdx = i;
+                break;
+              }
+            }
+          }
+
+          if (monthIdx !== -1) {
+            const yearMatch = norm.replace(/[a-z]/g, '').match(/\b(20\d{2}|\d{2})\b/);
+            if (yearMatch) {
+              const yrNum = Number(yearMatch[1]);
+              year = yrNum < 100 ? 2000 + yrNum : yrNum;
+            } else {
+              const matchAnyDigits = norm.match(/\d+/g);
+              if (matchAnyDigits) {
+                const lastBlock = Number(matchAnyDigits[matchAnyDigits.length - 1]);
+                if (lastBlock < 100) {
+                  year = 2000 + lastBlock;
+                } else {
+                  year = lastBlock;
+                }
+              }
+            }
+            if (year !== -1) {
+              if (year > 2400) year -= 543;
+              d = new Date(year, monthIdx, 1);
+            }
+          }
+        }
+
+        if (!d) {
+          const strDate = String(rawDate).trim();
+          // Extract the date part prior to any space or T (which splits on time part)
+          const cleanDateStr = strDate.split(/[ T]/)[0];
+          const parts = cleanDateStr.split(/[\/\-]/);
           if (parts.length === 3) {
              let year = 0;
              let month = 0;
@@ -248,8 +312,6 @@ export default function MarginAnalysis() {
                  day = p0;
                  month = p1;
                }
-             } else {
-               d = new Date(strDate);
              }
 
              if (year > 2400) {
@@ -259,8 +321,14 @@ export default function MarginAnalysis() {
              if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
                d = new Date(year, month - 1, day);
              }
-          } else {
-            d = new Date(strDate);
+          }
+          
+          // Fallback if the parts-based parse didn't result in a valid date
+          if (!d || isNaN(d.getTime())) {
+            const parsedDirect = new Date(strDate);
+            if (!isNaN(parsedDirect.getTime())) {
+              d = parsedDirect;
+            }
           }
         }
 
@@ -286,14 +354,14 @@ export default function MarginAnalysis() {
       const knownCostsTracker: Record<string, { qty: number, costSum: number }> = {}; 
       
       salesData.forEach((row: any) => {
-        const dateVal = row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
+        const dateVal = row[salesMapping.dateCol] || row['Date'] || row['วันที่'] || row['date'] || Object.values(row)[0] || '';
         const mKey = getParsedMonthYear(dateVal);
         const qty = parseFloat(String(row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || Object.values(row)[3] || 0).replace(/,/g, '')) || 0;
         const price = parseFloat(String(row['ราคาขาย'] || row['ราคาขาย(บาท)'] || row['Price'] || Object.values(row)[4] || 0).replace(/,/g, '')) || 0;
-        const revenue = parseFloat(String(row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
+        const revenue = parseFloat(String(row[salesMapping.revenueCol] || row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || Object.values(row)[5] || 0).replace(/,/g, '')) || (qty * price);
         const cost = parseFloat(String(row['ราคาทุน'] || row['Cost'] || '0').replace(/,/g, '')) || 0;
         
-        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row['Category'] || Object.values(row)[1] || 'Others');
+        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row[salesMapping.productCol] || row['Category'] || Object.values(row)[1] || 'Others');
         let targetCat = newCategories.find(c => c.category === category || c.categoryTh === category);
         if (!targetCat) targetCat = newCategories.find(c => c.category === 'Others'); // fallback
 
@@ -331,17 +399,16 @@ export default function MarginAnalysis() {
       });
 
       costData.forEach((row: any) => {
-        const dateVal = row['วันที่'] || row['Date'] || row['date'] || Object.values(row)[0] || '';
+        const dateVal = row[costMapping.dateCol] || row['วันที่'] || row['Date'] || row['date'] || Object.values(row)[0] || '';
         const mKey = getParsedMonthYear(dateVal);
-        const totalExpense = parseFloat(String(row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
+        const totalExpense = parseFloat(String(row[costMapping.totalCol] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || Object.values(row)[6] || 0).replace(/,/g, '')) || 0;
         
         if (newFixedCosts[mKey] === undefined) newFixedCosts[mKey] = 0;
         newFixedCosts[mKey] += totalExpense;
       });
 
       Object.keys(newFixedCosts).forEach(m => {
-        const sumVarCost = newCategories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
-        let actualFixCost = newFixedCosts[m] - sumVarCost;
+        let actualFixCost = newFixedCosts[m];
         if (actualFixCost < 0) actualFixCost = 0; 
         newFixedCosts[m] = actualFixCost;
       });
@@ -553,7 +620,7 @@ export default function MarginAnalysis() {
         {/* Total Overheads */}
         <div className="bg-white px-5 py-4 rounded-2xl border border-[#eaeaec] shadow-sm flex flex-col justify-between relative overflow-hidden group hover:border-red-600 transition-all">
           <div className="flex justify-between items-start w-full">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('TOTAL FIXED COST OVERHEAD', 'ต้นทุนคงที่จำลองรวม')}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('TOTAL LB & OH', 'ต้นทุนค่าแรงและโสหุ้ยรวม (LB & OH)')}</p>
             <div className="h-7 w-7 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
               <Landmark size={14} />
             </div>
@@ -605,7 +672,7 @@ export default function MarginAnalysis() {
                 />
                 <Legend />
                 <Bar dataKey="revenue" name={t('Revenue', 'รายรับรวม')} fill={CHARTS_THEME.primary} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="varCost" name={t('Variable Cost', 'ต้นทุนผันแปร')} fill={CHARTS_THEME.danger} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="varCost" name={t('Mat. Cost', 'ต้นทุนวัตถุดิบ (Mat. Cost)')} fill={CHARTS_THEME.danger} radius={[4, 4, 0, 0]} />
                 <Line type="monotone" dataKey="netMargin" name={t('Net Income', 'กำไรสุทธิสุทธิ')} stroke={CHARTS_THEME.success} strokeWidth={3} dot={{ r: 4 }} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -658,10 +725,10 @@ export default function MarginAnalysis() {
                 <tr className="border-b-2 border-[#b7a159]">
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest uppercase">{t('PERIOD', 'งวดบัญชี')}</th>
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('REVENUE (฿)', 'รายรับร่วม')}</th>
-                  <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('VAR. COST (฿)', 'ต้นทุนผันแปร')}</th>
+                  <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('MAT. COST (฿)', 'ต้นทุนวัตถุดิบ')}</th>
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('CONTRIB. MARGIN (฿)', 'กำไรขั้นต้น')}</th>
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('% MARGIN', '% ขั้นต้น')}</th>
-                  <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('FIXED COST (฿)', 'ค่าบริการคงที่')}</th>
+                  <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('LB & OH (฿)', 'ค่าใช้จ่าย LB & OH')}</th>
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('NET PROFIT (฿)', 'กำไรสุทธิ')}</th>
                   <th className="px-4 py-3.5 text-[12px] font-black tracking-widest text-right uppercase">{t('% NET MARGIN', '% กำไรสุทธิ')}</th>
                 </tr>

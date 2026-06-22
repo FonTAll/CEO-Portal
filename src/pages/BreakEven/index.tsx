@@ -78,6 +78,20 @@ export default function BreakEvenAnalysis() {
       const salesData = salesRes?.data?.items || [];
       const costData = costRes?.data?.items || [];
 
+      // Load mapping configurations dynamically to correctly identify customized column keys
+      const savedSalesMapping = localStorage.getItem('saleRevenueMapping');
+      const salesMapping = savedSalesMapping ? JSON.parse(savedSalesMapping) : {
+        dateCol: 'mm/dd/yyyy',
+        productCol: 'ชื่อสินค้า',
+        revenueCol: 'มูลค่าขาย(บาท)'
+      };
+
+      const savedCostMapping = localStorage.getItem('costExpenseMapping');
+      const costMapping = savedCostMapping ? JSON.parse(savedCostMapping) : {
+        dateCol: 'mm/dd/yyyy',
+        totalCol: 'ต้นทุนและค่าใช้จ่ายรวม'
+      };
+
       // Helper for Parsing Dates
       const getParsedMonthYear = (rawDate: any) => {
         if (!rawDate) return 'Unknown-2026';
@@ -95,7 +109,57 @@ export default function BreakEvenAnalysis() {
 
         if (!d) {
           const strDate = String(rawDate).trim();
-          const parts = strDate.split(/[\/\-]/);
+
+          // Robust Month-Year Parser (e.g., "Jan 2026", "Jan-26", "January 2026", "01/2026", "2026-01")
+          const monthsAbbrev = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+          const monthsFull = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+          const norm = strDate.toLowerCase();
+          let monthIdx = -1;
+          let year = -1;
+
+          for (let i = 0; i < 12; i++) {
+            if (norm.includes(monthsFull[i])) {
+              monthIdx = i;
+              break;
+            }
+          }
+          if (monthIdx === -1) {
+            for (let i = 0; i < 12; i++) {
+              if (norm.includes(monthsAbbrev[i])) {
+                monthIdx = i;
+                break;
+              }
+            }
+          }
+
+          if (monthIdx !== -1) {
+            const yearMatch = norm.replace(/[a-z]/g, '').match(/\b(20\d{2}|\d{2})\b/);
+            if (yearMatch) {
+              const yrNum = Number(yearMatch[1]);
+              year = yrNum < 100 ? 2000 + yrNum : yrNum;
+            } else {
+              const matchAnyDigits = norm.match(/\d+/g);
+              if (matchAnyDigits) {
+                const lastBlock = Number(matchAnyDigits[matchAnyDigits.length - 1]);
+                if (lastBlock < 100) {
+                  year = 2000 + lastBlock;
+                } else {
+                  year = lastBlock;
+                }
+              }
+            }
+            if (year !== -1) {
+              if (year > 2400) year -= 543;
+              d = new Date(year, monthIdx, 1);
+            }
+          }
+        }
+
+        if (!d) {
+          const strDate = String(rawDate).trim();
+          // Extract the date part prior to any space or T (which splits on time part)
+          const cleanDateStr = strDate.split(/[ T]/)[0];
+          const parts = cleanDateStr.split(/[\/\-]/);
           if (parts.length === 3) {
              let year = 0;
              let month = 0;
@@ -121,8 +185,6 @@ export default function BreakEvenAnalysis() {
                  day = p0;
                  month = p1;
                }
-             } else {
-               d = new Date(strDate);
              }
 
              if (year > 2400) {
@@ -132,8 +194,14 @@ export default function BreakEvenAnalysis() {
              if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
                d = new Date(year, month - 1, day);
              }
-          } else {
-            d = new Date(strDate);
+          }
+          
+          // Fallback if the parts-based parse didn't result in a valid date
+          if (!d || isNaN(d.getTime())) {
+            const parsedDirect = new Date(strDate);
+            if (!isNaN(parsedDirect.getTime())) {
+              d = parsedDirect;
+            }
           }
         }
 
@@ -174,14 +242,14 @@ export default function BreakEvenAnalysis() {
       const knownCostsTracker: Record<string, { qty: number, costSum: number }> = {};
 
       salesData.forEach((row: any) => {
-        const dateVal = row['Date'] || row['วันที่'] || row['date'] || '';
+        const dateVal = row[salesMapping.dateCol] || row['Date'] || row['วันที่'] || row['date'] || '';
         const mKey = getParsedMonthYear(dateVal);
         const qty = parseFloat(String(row['ยอดขาย (ชิ้น)'] || row['ยอดขาย(ชิ้น)'] || row['Qty'] || row['จำนวน'] || 0).replace(/,/g, '')) || 0;
         const price = parseFloat(String(row['ราคาขาย'] || row['ราคาขาย(บาท)'] || row['Price'] || 0).replace(/,/g, '')) || 0;
-        const revenue = parseFloat(String(row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || 0).replace(/,/g, '')) || (qty * price);
+        const revenue = parseFloat(String(row[salesMapping.revenueCol] || row['มูลค่าขาย'] || row['มูลค่าขาย(บาท)'] || row['Revenue'] || row['Total'] || 0).replace(/,/g, '')) || (qty * price);
         const cost = parseFloat(String(row['ราคาทุน'] || row['Cost'] || '0').replace(/,/g, '')) || 0;
 
-        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row['Category'] || 'Others');
+        let category = String(row['กลุ่มสินค้า'] || row['ประเภท'] || row[salesMapping.productCol] || row['Category'] || 'Others');
         let targetCat = newCategories.find(c => c.category === category || c.categoryTh === category);
         if (!targetCat) targetCat = newCategories.find(c => c.category === 'Others');
 
@@ -223,18 +291,17 @@ export default function BreakEvenAnalysis() {
       });
 
       costData.forEach((row: any) => {
-        const dateVal = row['วันที่'] || row['Date'] || row['date'] || '';
+        const dateVal = row[costMapping.dateCol] || row['mm/dd/yyyy'] || row['วันที่/Month'] || row['วันที่'] || row['Date'] || row['date'] || row['Month'] || row['month'] || '';
         const mKey = getParsedMonthYear(dateVal);
-        const totalExpense = parseFloat(String(row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || 0).replace(/,/g, '')) || 0;
+        const totalExpense = parseFloat(String(row[costMapping.totalCol] || row['ต้นทุนและค่าใช้จ่ายรวม'] || row['Total Cost'] || row['TOTAL'] || row['total'] || row['รวม'] || 0).replace(/,/g, '')) || 0;
 
         if (newFixedCosts[mKey] === undefined) newFixedCosts[mKey] = 0;
         newFixedCosts[mKey] += totalExpense;
       });
 
-      // Calculate operational Fixed Costs (Total Operating Expenses - total product variable costs)
+      // Fix Cost = TOTAL COST directly as requested
       Object.keys(newFixedCosts).forEach(m => {
-        const sumVarCost = newCategories.reduce((acc, cat) => acc + (cat.months[m]?.varCost || 0), 0);
-        let actualFixCost = newFixedCosts[m] - sumVarCost;
+        let actualFixCost = newFixedCosts[m];
         if (actualFixCost < 0) actualFixCost = 0;
         newFixedCosts[m] = actualFixCost;
       });
@@ -404,14 +471,14 @@ export default function BreakEvenAnalysis() {
         {/* Operating Fixed Cost */}
         <div className="bg-white border border-[#eaeaec] p-5 rounded-2xl flex flex-col relative overflow-hidden shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('YTD FIXED OVERHEADS', 'ค่าใช้จ่ายดำเนินการสะสม')}</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('YTD LB & OH', 'ค่าใช้จ่ายสะสม LB & OH')}</span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
               <Briefcase size={16} />
             </div>
           </div>
           <span className="text-xl font-black text-[#212c46] truncate">{formatTHB(summaryKPIs.totalFC)}</span>
           <span className="text-[10px] font-semibold text-slate-400 uppercase mt-1">
-            {t('Fixed Operational Overheads', 'ค่าเช่า แขนจ้าง และงานส่วนกลาง')}
+            {t('Labor & Overheads (TOTAL COST)', 'ค่าแรงและค่าโสหุ้ยดำเนินการสะสม (TOTAL COST)')}
           </span>
         </div>
 
@@ -532,9 +599,9 @@ export default function BreakEvenAnalysis() {
                 <tr className="bg-slate-50 border-b border-[#eaeaec] text-slate-400 font-extrabold uppercase tracking-wider">
                   <th className="px-6 py-3 font-black text-[10px]">{t('MONTH', 'เดือน')}</th>
                   <th className="px-6 py-3 font-black text-[10px] text-right">{t('ACTUAL REVENUE', 'ยอดขายจริง')}</th>
-                  <th className="px-6 py-3 font-black text-[10px] text-right">{t('VARIABLE COSTS', 'ต้นทุนแปรผัน')}</th>
+                  <th className="px-6 py-3 font-black text-[10px] text-right">{t('MAT. COSTS', 'ต้นทุนวัตถุดิบ (Mat. Cost)')}</th>
                   <th className="px-6 py-3 font-black text-[10px] text-center">{t('MARGIN RATIO', 'สัดส่วนกำไรผันแปร')}</th>
-                  <th className="px-6 py-3 font-black text-[10px] text-right">{t('FIXED OPERATING COSTS', 'ค่าใช้จ่ายคงที่')}</th>
+                  <th className="px-6 py-3 font-black text-[10px] text-right">{t('LB & OH', 'ต้นทุน LB & OH')}</th>
                   <th className="px-6 py-3 font-black text-[10px] text-right text-[#c1451f] bg-[#c1451f]/5">{t('MINIMUM SALES TO BREAK-EVEN', 'เป้ายอดขายขั้นต่ำ (คุ้มทุน)')}</th>
                   <th className="px-6 py-3 font-black text-[10px] text-right">{t('SURPLUS / SAFETY BUFFER', 'กำไรส่วนเกินความปลอดภัย')}</th>
                   <th className="px-6 py-3 font-black text-[10px] text-center">{t('STATUS', 'สถานะจุดคุ้มทุน')}</th>
